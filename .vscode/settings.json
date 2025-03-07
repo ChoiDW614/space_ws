@@ -1,0 +1,18 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/home/user/curiosity_ws/build/mppi_controller",
+        "/home/user/curiosity_ws/install/mppi_controller/lib/python3.10/site-packages",
+        "/home/user/mars_ws/build/mppi_controller",
+        "/home/user/mars_ws/install/mppi_controller/lib/python3.10/site-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/user/curiosity_ws/build/mppi_controller",
+        "/home/user/curiosity_ws/install/mppi_controller/lib/python3.10/site-packages",
+        "/home/user/mars_ws/build/mppi_controller",
+        "/home/user/mars_ws/install/mppi_controller/lib/python3.10/site-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ]
+}
