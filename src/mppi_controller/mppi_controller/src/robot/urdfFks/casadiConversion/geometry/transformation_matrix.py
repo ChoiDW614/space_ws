@@ -1,126 +1,101 @@
-"""Functions for getting casadi expressions for transformation matrices from
-joint type."""
-import casadi as cs
+# transformation_matrix_numpy.py
 import numpy as np
 
-
-def prismatic(xyz, rpy, axis, qi):
-    T = cs.SX.zeros(4, 4)
-
-    # Origin rotation from RPY ZYX convention
-    cr = cs.cos(rpy[0])
-    sr = cs.sin(rpy[0])
-    cp = cs.cos(rpy[1])
-    sp = cs.sin(rpy[1])
-    cy = cs.cos(rpy[2])
-    sy = cs.sin(rpy[2])
-    r00 = cy*cp
-    r01 = cy*sp*sr - sy*cr
-    r02 = cy*sp*cr + sy*sr
-    r10 = sy*cp
-    r11 = sy*sp*sr + cy*cr
-    r12 = sy*sp*cr - cy*sr
-    r20 = -sp
-    r21 = cp*sr
-    r22 = cp*cr
-    p0 = r00*axis[0]*qi + r01*axis[1]*qi + r02*axis[2]*qi
-    p1 = r10*axis[0]*qi + r11*axis[1]*qi + r12*axis[2]*qi
-    p2 = r20*axis[0]*qi + r21*axis[1]*qi + r22*axis[2]*qi
-
-    # Homogeneous transformation matrix
-    T[0, 0] = r00
-    T[0, 1] = r01
-    T[0, 2] = r02
-    T[1, 0] = r10
-    T[1, 1] = r11
-    T[1, 2] = r12
-    T[2, 0] = r20
-    T[2, 1] = r21
-    T[2, 2] = r22
-    T[0, 3] = xyz[0] + p0
-    T[1, 3] = xyz[1] + p1
-    T[2, 3] = xyz[2] + p2
-    T[3, 3] = 1.0
-    return T
-
-
-def revolute(xyz, rpy, axis, qi):
-    T = cs.SX.zeros(4, 4)
-
-    # Origin rotation from RPY ZYX convention
-    cr = cs.cos(rpy[0])
-    sr = cs.sin(rpy[0])
-    cp = cs.cos(rpy[1])
-    sp = cs.sin(rpy[1])
-    cy = cs.cos(rpy[2])
-    sy = cs.sin(rpy[2])
-    r00 = cy*cp
-    r01 = cy*sp*sr - sy*cr
-    r02 = cy*sp*cr + sy*sr
-    r10 = sy*cp
-    r11 = sy*sp*sr + cy*cr
-    r12 = sy*sp*cr - cy*sr
-    r20 = -sp
-    r21 = cp*sr
-    r22 = cp*cr
-
-    # joint rotation from skew sym axis angle
-    cqi = cs.cos(qi)
-    sqi = cs.sin(qi)
-    s00 = (1 - cqi)*axis[0]*axis[0] + cqi
-    s11 = (1 - cqi)*axis[1]*axis[1] + cqi
-    s22 = (1 - cqi)*axis[2]*axis[2] + cqi
-    s01 = (1 - cqi)*axis[0]*axis[1] - axis[2]*sqi
-    s10 = (1 - cqi)*axis[0]*axis[1] + axis[2]*sqi
-    s12 = (1 - cqi)*axis[1]*axis[2] - axis[0]*sqi
-    s21 = (1 - cqi)*axis[1]*axis[2] + axis[0]*sqi
-    s20 = (1 - cqi)*axis[0]*axis[2] - axis[1]*sqi
-    s02 = (1 - cqi)*axis[0]*axis[2] + axis[1]*sqi
-
-    # Homogeneous transformation matrix
-    T[0, 0] = r00*s00 + r01*s10 + r02*s20
-    T[1, 0] = r10*s00 + r11*s10 + r12*s20
-    T[2, 0] = r20*s00 + r21*s10 + r22*s20
-
-    T[0, 1] = r00*s01 + r01*s11 + r02*s21
-    T[1, 1] = r10*s01 + r11*s11 + r12*s21
-    T[2, 1] = r20*s01 + r21*s11 + r22*s21
-
-    T[0, 2] = r00*s02 + r01*s12 + r02*s22
-    T[1, 2] = r10*s02 + r11*s12 + r12*s22
-    T[2, 2] = r20*s02 + r21*s12 + r22*s22
-
-    T[0, 3] = xyz[0]
-    T[1, 3] = xyz[1]
-    T[2, 3] = xyz[2]
-    T[3, 3] = 1.0
-    return T
-
-def numpy_skew_symmetric(v):
-    """Returns a skew symmetric matrix from vector. p q r"""
-    return np.array([[0, -v[2], v[1]],
-                     [v[2], 0, -v[0]],
-                     [-v[1], v[0], 0]])
-
-
-def numpy_rotation_rpy(roll, pitch, yaw):
-    """Returns a rotation matrix from roll pitch yaw. ZYX convention."""
+def rotation_matrix_rpy(roll: float, pitch: float, yaw: float) -> np.ndarray:
+    """
+    Roll-Pitch-Yaw (ZYX 혹은 원하는 convention)에 따라 3x3 회전행렬을 반환.
+    (아래 예시는 roll->pitch->yaw 순으로 곱한다고 가정한 ZYX 컨벤션 예시)
+    """
     cr = np.cos(roll)
     sr = np.sin(roll)
     cp = np.cos(pitch)
     sp = np.sin(pitch)
     cy = np.cos(yaw)
     sy = np.sin(yaw)
-    return np.array([[cy*cp,  cy*sp*sr - sy*cr,  cy*sp*cr + sy*sr],
-                     [sy*cp,  sy*sp*sr + cy*cr,  sy*sp*cr - cy*sr],
-                     [  -sp,             cp*sr,             cp*cr]])
 
+    # ZYX 형태로 회전행렬 구성
+    # 만약 X->Y->Z 등 다른 convention을 쓰고 싶다면 원하는 순서로 곱셈 변경 가능
+    r00 = cy * cp
+    r01 = cy * sp * sr - sy * cr
+    r02 = cy * sp * cr + sy * sr
+    r10 = sy * cp
+    r11 = sy * sp * sr + cy * cr
+    r12 = sy * sp * cr - cy * sr
+    r20 = -sp
+    r21 = cp * sr
+    r22 = cp * cr
 
-def numpy_rpy(displacement, roll, pitch, yaw):
-    """Homogeneous transformation matrix with roll pitch yaw."""
-    T = np.zeros([4, 4])
-    T[:3, :3] = numpy_rotation_rpy(roll, pitch, yaw)
-    T[:3, 3] = displacement
-    T[3, 3] = 1.0
+    R = np.array([
+        [r00, r01, r02],
+        [r10, r11, r12],
+        [r20, r21, r22],
+    ], dtype=float)
+    return R
+
+def make_transform_matrix(xyz, rpy):
+    """
+    xyz: (x, y, z) 위치
+    rpy: (roll, pitch, yaw)
+    를 받아 4x4 동차변환행렬을 구성.
+    """
+    T = np.eye(4)
+    R = rotation_matrix_rpy(rpy[0], rpy[1], rpy[2])
+    T[:3, :3] = R
+    T[0, 3] = xyz[0]
+    T[1, 3] = xyz[1]
+    T[2, 3] = xyz[2]
     return T
 
+def prismatic_transform(xyz, rpy, axis, q_val):
+    """
+    Prismatic(슬라이더) 조인트의 변환행렬 (4x4).
+    xyz, rpy로 기본 좌표계를 만든 뒤,
+    axis 방향으로 q_val만큼 슬라이드.
+    """
+    # 먼저 조인트의 origin 변환행렬
+    T_origin = make_transform_matrix(xyz, rpy)
+
+    # axis 방향으로 q_val만큼 이동하는 변환행렬
+    # axis는 normalize 해두는 게 안전
+    axis = np.asarray(axis, dtype=float)
+    if np.linalg.norm(axis) < 1e-12:
+        axis = np.array([1.0, 0.0, 0.0])
+    else:
+        axis = axis / np.linalg.norm(axis)
+
+    T_slide = np.eye(4)
+    T_slide[0:3, 3] = axis * q_val
+
+    # 최종 변환행렬 = origin * slide
+    return T_origin @ T_slide
+
+def revolute_transform(xyz, rpy, axis, q_val):
+    """
+    Revolute(회전) 조인트의 변환행렬 (4x4).
+    xyz, rpy로 기본 좌표계를 만든 뒤,
+    axis를 중심으로 q_val 라디안만큼 회전.
+    """
+    # 먼저 조인트의 origin 변환행렬
+    T_origin = make_transform_matrix(xyz, rpy)
+
+    axis = np.asarray(axis, dtype=float)
+    if np.linalg.norm(axis) < 1e-12:
+        axis = np.array([1.0, 0.0, 0.0])
+    else:
+        axis = axis / np.linalg.norm(axis)
+
+    c = np.cos(q_val)
+    s = np.sin(q_val)
+    vx, vy, vz = axis
+
+    # 로드리게스 회전공식
+    R_axis = np.array([
+        [c + vx*vx*(1-c),   vx*vy*(1-c) - vz*s, vx*vz*(1-c) + vy*s],
+        [vy*vx*(1-c) + vz*s, c + vy*vy*(1-c),   vy*vz*(1-c) - vx*s],
+        [vz*vx*(1-c) - vy*s, vz*vy*(1-c) + vx*s, c + vz*vz*(1-c)]
+    ], dtype=float)
+
+    T_rot = np.eye(4)
+    T_rot[:3, :3] = R_axis
+
+    return T_origin @ T_rot

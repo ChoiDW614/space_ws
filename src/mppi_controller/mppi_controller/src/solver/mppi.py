@@ -11,6 +11,9 @@ from torch.distributions.multivariate_normal import MultivariateNormal
 import pinocchio as pin
 
 from rclpy.logging import get_logger
+from ament_index_python.packages import get_package_share_directory
+
+from mppi_controller.src.robot.urdfFks.urdfFk import URDFForwardKinematics
 
 class MPPI():
     def __init__(self):
@@ -43,9 +46,21 @@ class MPPI():
         # self.init_q
         # self.init_base
 
+        package_name = "mppi_controller"
+        urdf_file_path = os.path.join(get_package_share_directory(package_name), "models", "curiosity.urdf")
+
+        # with open(urdf_file_path, "r") as file:
+        #     urdf = file.read()
+        fk_curiosity = URDFForwardKinematics(
+            urdf_file_path,
+            root_link = 'chassis',
+            end_links = 'arm_tools',
+        )
+        self.logger.info("finish")
+
 
     def compute_control(self):
-        acc = self.sampling_acceleration()
+        # acc = self.sampling_acceleration()
 
 
 
