@@ -12,10 +12,14 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        (os.path.join('share', package_name, 'models'),
-            glob('mppi_controller/models/*.urdf')),
-        (os.path.join('share', package_name, 'models', 'meshes'),
-            glob('mppi_controller/models/meshes/*')),
+        (os.path.join('share', package_name, 'models', 'curiosity'),
+            glob('mppi_controller/models/curiosity/*.urdf')),
+        (os.path.join('share', package_name, 'models', 'curiosity', 'meshes'),
+            glob('mppi_controller/models/curiosity/meshes/*')),
+        (os.path.join('share', package_name, 'models', 'canadarm'),
+            glob('mppi_controller/models/canadarm/urdf/*.urdf')),
+        (os.path.join('share', package_name, 'models', 'canadarm', 'meshes'),
+            glob('mppi_controller/models/canadarm/meshes/*')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -26,7 +30,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'controller_node = mppi_controller.controller_node:main'
+            'curiosity_controller_node = mppi_controller.curiosity_controller_node:main',
+            'canadarm_controller_node = mppi_controller.canadarm_controller_node:main'
         ],
     },
 )

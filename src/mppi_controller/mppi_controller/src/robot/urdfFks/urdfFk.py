@@ -1,5 +1,7 @@
 from typing import Union, List
 import numpy as np
+import torch
+from torch.linalg import inv
 # import casadi as ca
 import mppi_controller.src.robot.urdfFks.casadiConversion.urdfparser as u2c
 
@@ -20,6 +22,8 @@ class URDFForwardKinematics(ForwardKinematics):
         self.robot.from_file(urdf)
 
         self._n_dof = self.robot.degrees_of_freedom()
+        self._mount_transformation = torch.eye(4, dtype=torch.float64)
+
 
     def numpy(self,
         q: np.ndarray,
@@ -52,6 +56,45 @@ class URDFForwardKinematics(ForwardKinematics):
             T_child = self._mount_transformation @ T_child
 
         T_parent_inv = np.linalg.inv(T_parent)
+        T_parent_child = T_parent_inv @ T_child
+
+        T_parent_child = link_transformation @ T_parent_child
+
+        if position_only:
+            return T_parent_child[:3, 3]
+        else:
+            return T_parent_child
+        
+
+    def fk(self,
+        q: torch.Tensor,
+        child_link: str,
+        parent_link: Union[str, None] = None,
+        link_transformation: torch.Tensor = torch.eye(4, dtype=torch.float64),
+        position_only: bool = False
+    ) -> torch.Tensor:
+        
+        if parent_link is None:
+            parent_link = self._root_link
+
+        if child_link not in self.robot.link_names() and child_link != self._root_link:
+            raise LinkNotInURDFError(f"The link {child_link} is not in the URDF. Valid links: {self.robot.link_names()}")
+        if parent_link not in self.robot.link_names() and parent_link != self._root_link:
+            raise LinkNotInURDFError( f"The link {parent_link} is not in the URDF. Valid links: {self.robot.link_names()}")
+
+        if parent_link == self._root_link:
+            T_parent = torch.eye(4, dtype=torch.float64)
+        else:
+            T_parent = self.robot.forward_kinematics(parent_link, q)
+            T_parent = self._mount_transformation @ T_parent
+
+        if child_link == self._root_link:
+            T_child = torch.eye(4)
+        else:
+            T_child = self.robot.forward_kinematics(child_link, q)
+            T_child = self._mount_transformation @ T_child
+
+        T_parent_inv = inv(T_parent)
         T_parent_child = T_parent_inv @ T_child
 
         T_parent_child = link_transformation @ T_parent_child

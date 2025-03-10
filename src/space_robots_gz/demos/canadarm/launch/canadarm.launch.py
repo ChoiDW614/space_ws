@@ -33,12 +33,11 @@ def generate_launch_description():
     doc = xacro.process_file(urdf_model_path, mappings={'xyz' : '1.0 0.0 1.5', 'rpy': '3.1416 0.0 0.0'})
     robot_description = {'robot_description': doc.toxml()}
 
-
-    #run_node = Node(
-    #    package="canadarm",
-    #    executable="move_joint_server",
-    #    output='screen'
-    #)
+    run_node = Node(
+       package="canadarm",
+       executable="move_joint_server",
+       output='screen'
+    )
 
     run_move_arm = Node(
         package="canadarm",
@@ -46,14 +45,12 @@ def generate_launch_description():
         output='screen'
     )
 
-
     start_world = ExecuteProcess(
         cmd=['ign gazebo', leo_model, '-r'],
         output='screen',
         additional_env=env,
         shell=True
     )
-
 
     robot_state_publisher = Node(
             package='robot_state_publisher',
@@ -91,7 +88,7 @@ def generate_launch_description():
         start_world,
         robot_state_publisher,
         spawn,
-        #run_node,
+        run_node,
         run_move_arm,
 
         RegisterEventHandler(
