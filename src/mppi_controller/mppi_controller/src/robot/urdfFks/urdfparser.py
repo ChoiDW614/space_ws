@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from typing import List, Set
 from urdf_parser_py.urdf import URDF
-from mppi_controller.src.robot.urdfFks.casadiConversion.geometry.transformation_matrix import prismatic_transform, revolute_transform, make_transform_matrix
+from mppi_controller.src.robot.urdfFks.transformation_matrix import prismatic_transform, revolute_transform, make_transform_matrix
 
 
 class URDFparser(object):
@@ -28,6 +28,10 @@ class URDFparser(object):
         self._joint_map = dict()
         self._degrees_of_freedom = 0
         self._link_names = list()
+        self._joint_chain_list = None
+        self._tf_fk = torch.eye(4)
+        self._n_samples = 1
+        self._n_timestep = 1
 
     def degrees_of_freedom(self):
         return self._degrees_of_freedom
@@ -113,18 +117,13 @@ class URDFparser(object):
                     joint_list.append(jnt)
         return joint_list
     
-    def forward_kinematics(
-        self,
-        tip: str,
-        q: torch.Tensor,
-        link_transformation: torch.Tensor = torch.eye(4, dtype=torch.float64)
-    ):
+    def forward_kinematics(self, q: torch.Tensor):
         if self.robot_desc is None:
-            raise ValueError("Robot description not loaded.")
-        T_fk = torch.eye(4)
-        joint_list = self._get_joint_chain(tip)
+            raise ValueError("Robot description not loaded.") 
 
-        for jt in joint_list:
+        tf_fk = self._tf_fk.expand(self._n_samples, self._n_timestep, 4, 4).to(device=q.device).clone()
+
+        for jt in self._joint_chain_list:
             jtype = jt.type
             xyz = torch.tensor(jt.origin.xyz)
             rpy = torch.tensor(jt.origin.rpy)
@@ -136,67 +135,22 @@ class URDFparser(object):
 
             if jt.name in self._joint_map:
                 q_idx = self._joint_map[jt.name]
-                q_val = q[q_idx]
+                q_val = q[:,:,q_idx]
             else:
-                q_val = 0.0
+                q_val = torch.zeros([self._n_samples, self._n_timestep])
 
             if jtype == "fixed":
-                T_local = make_transform_matrix(xyz, rpy)
-                T_fk = T_fk @ T_local
+                tf_local = make_transform_matrix(xyz, rpy)
+                tf_fk = tf_fk @ tf_local
             elif jtype == "prismatic":
-                T_local = prismatic_transform(xyz, rpy, axis, q_val)
-                T_fk = T_fk @ T_local
+                tf_local = prismatic_transform(xyz, rpy, axis, q_val)
+                tf_fk = tf_fk @ tf_local
             elif jtype in ["revolute", "continuous"]:
-                T_local = revolute_transform(xyz, rpy, axis, q_val)
-                T_fk = T_fk @ T_local
+                tf_local = revolute_transform(xyz, rpy, axis, q_val)
+                tf_fk = tf_fk @ tf_local
             else:
-                T_local = make_transform_matrix(xyz, rpy)
-                T_fk = T_fk @ T_local
+                tf_local = make_transform_matrix(xyz, rpy)
+                tf_fk = tf_fk @ tf_local
 
-        T_fk = T_fk @ link_transformation
-        return T_fk
+        return tf_fk
 
-
-    # def get_forward_kinematics(
-    #     self,
-    #     root: str,
-    #     tip: str,
-    #     q: np.ndarray,
-    #     link_transformation: np.ndarray = np.eye(4)
-    # ):
-    #     if self.robot_desc is None:
-    #         raise ValueError("Robot description not loaded.")
-    #     T_fk = np.eye(4)
-    #     joint_list = self._get_joint_chain(tip)
-
-    #     for jt in joint_list:
-    #         jtype = jt.type
-    #         xyz = np.array(jt.origin.xyz, dtype=float)
-    #         rpy = np.array(jt.origin.rpy, dtype=float)
-
-    #         if jt.axis is None:
-    #             axis = np.array([1.0, 0.0, 0.0], dtype=float)
-    #         else:
-    #             axis = np.array(jt.axis, dtype=float)
-
-    #         if jt.name in self._joint_map:
-    #             q_idx = self._joint_map[jt.name]
-    #             q_val = q[q_idx]
-    #         else:
-    #             q_val = 0.0
-
-    #         if jtype == "fixed":
-    #             T_local = make_transform_matrix(xyz, rpy)
-    #             T_fk = T_fk @ T_local
-    #         elif jtype == "prismatic":
-    #             T_local = prismatic_transform(xyz, rpy, axis, q_val)
-    #             T_fk = T_fk @ T_local
-    #         elif jtype in ["revolute", "continuous"]:
-    #             T_local = revolute_transform(xyz, rpy, axis, q_val)
-    #             T_fk = T_fk @ T_local
-    #         else:
-    #             T_local = make_transform_matrix(xyz, rpy)
-    #             T_fk = T_fk @ T_local
-
-    #     T_fk = T_fk @ link_transformation
-    #     return T_fk

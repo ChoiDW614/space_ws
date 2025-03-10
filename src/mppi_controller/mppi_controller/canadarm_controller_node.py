@@ -60,22 +60,33 @@ class mppiControllerNode(Node):
         subscribe_qos_profile = QoSProfile(depth=5, reliability=ReliabilityPolicy.BEST_EFFORT, durability=DurabilityPolicy.VOLATILE)
         
         self.joint_state_subscriber = self.create_subscription(DynamicJointState, '/dynamic_joint_states', self.joint_state_callback, subscribe_qos_profile)
-        # self.base_state_subscriber = self.create_subscription(Odometry, '/model/curiosity_mars_rover/odometry', self.base_state_callback, subscribe_qos_profile)
-
+        
         timer_period = 0.1  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
-        # # arm publisher
-        # self.arm_publisher_ = self.create_publisher(Float64MultiArray, '/arm_joint_effort_controller/commands', 10)
+        # arm publisher
+        self.traj_msg = JointTrajectory()
+        self.traj_msg.joint_names = ["Base_Joint", "Shoulder_Roll", "Shoulder_Yaw", "Elbow_Pitch", "Wrist_Pitch", "Wrist_Yaw", "Wrist_Roll"]
+        self.arm_publisher = self.create_publisher(JointTrajectory, '/canadarm_joint_trajectory_controller/joint_trajectory', 10)
     
     
     def timer_callback(self):
         self.controller.compute_control()
 
+        point1 = JointTrajectoryPoint()
+        point1.positions = [1.0, -1.5, 2.0, -3.2, 0.8, 0.5, -1.0]
+        point1.time_from_start = Duration(sec=0)
+
+        self.traj_msg.points.append(point1)
+        self.arm_publisher.publish(self.traj_msg)
+
+
     def joint_state_callback(self, msg):
         self.joint_names = msg.joint_names
         self.interface_name = [iv.interface_names for iv in msg.interface_values]
         self.interface_values = torch.tensor([list(iv.values) for iv in msg.interface_values])
+        self.controller.set_init_joint(self.interface_values)
+        # self.get_logger().info(str(self.controller._init_q))
 
 
 def main():
