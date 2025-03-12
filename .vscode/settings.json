@@ -96,6 +96,12 @@
         "__split_buffer": "cpp",
         "__tree": "cpp",
         "queue": "cpp",
-        "stack": "cpp"
-    }
+        "stack": "cpp",
+        "__bit_reference": "cpp",
+        "__string": "cpp",
+        "__locale": "cpp",
+        "filesystem": "cpp",
+        "__node_handle": "cpp"
+    },
+    "C_Cpp.errorSquiggles": "disabled"
 }

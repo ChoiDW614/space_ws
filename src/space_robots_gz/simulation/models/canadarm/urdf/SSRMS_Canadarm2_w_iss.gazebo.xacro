@@ -58,6 +58,8 @@
       <robot_param_node>robot_state_publisher</robot_param_node>
       <parameters>$(find canadarm)/config/canadarm_control.yaml</parameters>
       </plugin>
+      <!-- Base Link State Publisher-->
+      <plugin filename="libcanadarm_gz_plugin.so" name="canadarm_gz_plugin"></plugin>
   </gazebo>
 
   <!-- Colors -->

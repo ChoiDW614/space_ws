@@ -1,0 +1,499 @@
+<sdf version='1.7'>
+  <model name='SSRMS_Canadarm2'>
+    <link name='ISS'>
+      <inertial>
+        <pose>0 1e-06 0.607357 0 -0 0</pose>
+        <mass>1243.66</mass>
+        <inertia>
+          <ixx>1928.22</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1928.22</iyy>
+          <iyz>-0.00197326</iyz>
+          <izz>10.336</izz>
+        </inertia>
+      </inertial>
+      <collision name='ISS_collision'>
+        <pose>0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/iss.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+      <collision name='ISS_fixed_joint_lump__Base_SSRMS_collision_1'>
+        <pose>0 0 3.6 -3.14159 0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/ee.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+      <visual name='ISS_visual'>
+        <pose>0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/iss.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+      <visual name='ISS_fixed_joint_lump__Base_SSRMS_visual_1'>
+        <pose>0 0 3.6 -3.14159 0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/ee.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+    </link>
+    <joint name='Base_Joint' type='revolute'>
+      <pose relative_to='ISS'>0 0 3.6 -3.14159 0 0</pose>
+      <parent>ISS</parent>
+      <child>B1</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <lower>-4.71239</lower>
+          <upper>4.71239</upper>
+          <effort>2332</effort>
+          <velocity>0.0698132</velocity>
+        </limit>
+        <dynamics>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+      </axis>
+    </joint>
+    <link name='B1'>
+      <pose relative_to='Base_Joint'>0 0 0 0 -0 0</pose>
+      <inertial>
+        <pose>0.25082 0 -0.175 3.14159 -1.57079 3.14159</pose>
+        <mass>105.98</mass>
+        <inertia>
+          <ixx>12.19</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>12.19</iyy>
+          <iyz>0</iyz>
+          <izz>3.061</izz>
+        </inertia>
+      </inertial>
+      <collision name='B1_collision'>
+        <pose>0.25082 0 -0.175 0 -1.5708 0</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/joint_v3_0.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+      <visual name='B1_visual'>
+        <pose>0.25082 0 -0.175 0 -1.5708 0</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/joint_v3_0.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+    </link>
+    <joint name='Shoulder_Roll' type='revolute'>
+      <pose relative_to='B1'>0.25082 0 -0.175 0 -0 0</pose>
+      <parent>B1</parent>
+      <child>B2</child>
+      <axis>
+        <xyz>1 0 0</xyz>
+        <limit>
+          <lower>-4.71239</lower>
+          <upper>4.71239</upper>
+          <effort>2332</effort>
+          <velocity>0.0698132</velocity>
+        </limit>
+        <dynamics>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+      </axis>
+    </joint>
+    <link name='B2'>
+      <pose relative_to='Shoulder_Roll'>0 0 0 0 -0 0</pose>
+      <inertial>
+        <pose>0.175 0 -0.25082 0 -0 0</pose>
+        <mass>105.98</mass>
+        <inertia>
+          <ixx>12.19</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>12.13</iyy>
+          <iyz>0</iyz>
+          <izz>3.061</izz>
+        </inertia>
+      </inertial>
+      <collision name='B2_collision'>
+        <pose>0.175 0 -0.25082 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/joint_v3_0.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+      <visual name='B2_visual'>
+        <pose>0.175 0 -0.25082 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/joint_v3_0.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+    </link>
+    <joint name='Shoulder_Yaw' type='revolute'>
+      <pose relative_to='B2'>0.175 0 -0.25082 0 -0 0</pose>
+      <parent>B2</parent>
+      <child>B3</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <lower>-4.71239</lower>
+          <upper>4.71239</upper>
+          <effort>2332</effort>
+          <velocity>0.0698132</velocity>
+        </limit>
+        <dynamics>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+      </axis>
+    </joint>
+    <link name='B3'>
+      <pose relative_to='Shoulder_Yaw'>0 0 0 0 -0 0</pose>
+      <inertial>
+        <pose>4 0 -0.175 3.14 -0 0</pose>
+        <mass>314.88</mass>
+        <inertia>
+          <ixx>15.41</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>2094.71</iyy>
+          <iyz>0</iyz>
+          <izz>2103.19</izz>
+        </inertia>
+      </inertial>
+      <collision name='B3_collision'>
+        <pose>0.25082 0 -0.175 0 -1.5708 0</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/joint_v3_0.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+      <collision name='B3_collision_1'>
+        <pose>0.25082 0 -0.175 -1.5708 -0 -1.5708</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/long_link_1_v3_0.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+      <collision name='B3_collision_2'>
+        <pose>7.36082 0 -0.175 0 1.5708 0</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/joint_v3_0.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+      <visual name='B3_visual'>
+        <pose>0.25082 0 -0.175 0 -1.5708 0</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/joint_v3_0.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+      <visual name='B3_visual_1'>
+        <pose>0.25082 0 -0.175 -1.5708 -0 -1.5708</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/long_link_1_v3_0.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+      <visual name='B3_visual_2'>
+        <pose>7.36082 0 -0.175 0 1.5708 0</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/joint_v3_0.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+      <visual name='B3_visual_3'>
+        <pose>7.61164 0 -0.35 0 -0 1.5708</pose>
+        <geometry>
+          <cylinder>
+            <length>0.5</length>
+            <radius>0.165</radius>
+          </cylinder>
+        </geometry>
+      </visual>
+    </link>
+    <joint name='Elbow_Pitch' type='revolute'>
+      <pose relative_to='B3'>7.61164 0 -0.6 0 -0 0</pose>
+      <parent>B3</parent>
+      <child>B4</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <lower>-4.71239</lower>
+          <upper>4.71239</upper>
+          <effort>2332</effort>
+          <velocity>0.0698132</velocity>
+        </limit>
+        <dynamics>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+      </axis>
+    </joint>
+    <link name='B4'>
+      <pose relative_to='Elbow_Pitch'>0 0 0 0 -0 0</pose>
+      <inertial>
+        <pose>-3.6 0 -0.175 0 -0 0</pose>
+        <mass>279.2</mass>
+        <inertia>
+          <ixx>9.522</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1966.28</iyy>
+          <iyz>0</iyz>
+          <izz>1966.28</izz>
+        </inertia>
+      </inertial>
+      <collision name='B4_collision'>
+        <pose>-0.25082 0 -0.175 0 1.5708 0</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/link_joint_v2_1.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+      <collision name='B4_collision_1'>
+        <pose>-7.36082 0 -0.175 -1.57159 -0.001593 -1.57159</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/long_link_2_v3_0.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+      <collision name='B4_collision_2'>
+        <pose>-7.36082 0 -0.175 0 -1.5708 0</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/joint_v3_0.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+      <visual name='B4_visual'>
+        <pose>-0.25082 0 -0.175 0 1.5708 0</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/link_joint_v2_1.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+      <visual name='B4_visual_1'>
+        <pose>-7.36082 0 -0.175 -1.57159 -0.001593 -1.57159</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/long_link_2_v3_0.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+      <visual name='B4_visual_2'>
+        <pose>-7.36082 0 -0.175 0 -1.5708 0</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/joint_v3_0.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+    </link>
+    <joint name='Wrist_Pitch' type='revolute'>
+      <pose relative_to='B4'>-7.61164 0 -0.35 0 -0 0</pose>
+      <parent>B4</parent>
+      <child>B5</child>
+      <axis>
+        <xyz>0 0 -1</xyz>
+        <limit>
+          <lower>-4.71239</lower>
+          <upper>4.71239</upper>
+          <effort>2332</effort>
+          <velocity>0.0698132</velocity>
+        </limit>
+        <dynamics>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+      </axis>
+    </joint>
+    <link name='B5'>
+      <pose relative_to='Wrist_Pitch'>0 0 0 0 -0 0</pose>
+      <inertial>
+        <pose>0 0 0 1.5708 -0 0</pose>
+        <mass>105.98</mass>
+        <inertia>
+          <ixx>8.305</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>3.061</iyy>
+          <iyz>0</iyz>
+          <izz>8.0386</izz>
+        </inertia>
+      </inertial>
+      <collision name='B5_collision'>
+        <pose>0 0 0 3.14159 -0.001593 3.14159</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/joint_v3_0.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+      <visual name='B5_visual'>
+        <pose>0 0 0 3.14159 -0.001593 3.14159</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/joint_v3_0.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+    </link>
+    <joint name='Wrist_Yaw' type='revolute'>
+      <pose relative_to='B5'>-0.175 0 -0.25082 0 -0 0</pose>
+      <parent>B5</parent>
+      <child>B6</child>
+      <axis>
+        <xyz>1 0 0</xyz>
+        <limit>
+          <lower>-4.71239</lower>
+          <upper>4.71239</upper>
+          <effort>2332</effort>
+          <velocity>0.0698132</velocity>
+        </limit>
+        <dynamics>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+      </axis>
+    </joint>
+    <link name='B6'>
+      <pose relative_to='Wrist_Yaw'>0 0 0 0 -0 0</pose>
+      <inertial>
+        <pose>0 0 0 3.14159 -1.57079 3.14159</pose>
+        <mass>105.98</mass>
+        <inertia>
+          <ixx>12.13</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>12.13</iyy>
+          <iyz>0</iyz>
+          <izz>3.061</izz>
+        </inertia>
+      </inertial>
+      <collision name='B6_collision'>
+        <pose>0 0 0 0 -1.5708 0</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/joint_v3_0.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+      <visual name='B6_visual'>
+        <pose>0 0 0 0 -1.5708 0</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/joint_v3_0.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+    </link>
+    <joint name='Wrist_Roll' type='revolute'>
+      <pose relative_to='B6'>-0.25082 0 -0.175 0 -0 0</pose>
+      <parent>B6</parent>
+      <child>EE_SSRMS</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <lower>-4.71239</lower>
+          <upper>4.71239</upper>
+          <effort>2332</effort>
+          <velocity>0.0698132</velocity>
+        </limit>
+        <dynamics>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+      </axis>
+    </joint>
+    <link name='EE_SSRMS'>
+      <pose relative_to='Wrist_Roll'>0 0 0 0 -0 0</pose>
+      <inertial>
+        <pose>0 0 -0.5 3.14159 1.57079 3.14159</pose>
+        <mass>243.66</mass>
+        <inertia>
+          <ixx>9.336</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>44.41</iyy>
+          <iyz>0</iyz>
+          <izz>44.41</izz>
+        </inertia>
+      </inertial>
+      <collision name='EE_SSRMS_collision'>
+        <pose>0 0 0 3.14159 -9.3e-05 3.14159</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/ee.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+      <visual name='EE_SSRMS_visual'>
+        <pose>0 0 0 3.14159 -9.3e-05 3.14159</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://simulation/models/canadarm/meshes/ee.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+    </link>
+    <static>0</static>
+    <plugin name='ign_ros2_control::IgnitionROS2ControlPlugin' filename='libign_ros2_control-system'>
+      <robot_param>robot_description</robot_param>
+      <robot_param_node>robot_state_publisher</robot_param_node>
+      <parameters>/home/spaceros-user/demos_ws/install/canadarm/share/canadarm/config/canadarm_control.yaml</parameters>
+    </plugin>
+    <plugin filename="libcanadarm_gz_plugin.so" name="canadarm_gz_plugin"></plugin>
+  </model>
+</sdf>
