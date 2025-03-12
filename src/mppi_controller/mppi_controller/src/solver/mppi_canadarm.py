@@ -15,6 +15,8 @@ from ament_index_python.packages import get_package_share_directory
 
 from mppi_controller.src.robot.urdfFks.urdfFk import URDFForwardKinematics
 from mppi_controller.src.utils.pose import Pose, pose_diff
+from mppi_controller.src.utils.rotation_conversions import matrix_to_quaternion, euler_angles_to_matrix
+
 
 class MPPI():
     def __init__(self):
@@ -45,42 +47,45 @@ class MPPI():
         self._init_q = torch.zeros(7, device=self.device)
         self._init_qdot = torch.zeros(7, device=self.device)
         self._init_qddot = torch.zeros(7, device=self.device)
+        self.u_prev = torch.zeros(self.num_joint)
 
         # Target states
         self.target_pose = Pose()
+        self.target_pose.pose = torch.tensor([1.0, 1.0, 1.0])
+        self.target_pose.orientation = torch.tensor([1.0, 0.0, 1.0, 1.0])
+
+        # cost weight parameters
+        self.tracking_pose_weight = 1.0
+        self.tracking_orientation_weight = 5.0
+
 
         # Import URDF for forward kinematics
         package_name = "mppi_controller"
         urdf_file_path = os.path.join(get_package_share_directory(package_name), "models", "canadarm", "Canadarm2.urdf")
 
         self.fk_canadarm = URDFForwardKinematics(urdf_file_path, root_link='Base_SSRMS', end_links = 'EE_SSRMS')
-        # 어느게 정확한지 모르겠음
-        # tf_Base_SSRMS = torch.tensor([[1.0,        0.0,       0.0, 1.0],
-        #                               [0.0,       -1.0, 0.0015927, 0.0],
-        #                               [0.0, -0.0015927,      -1.0, 1.5],
-        #                               [0.0,        0.0,       0.0, 1.0]])
-        tf_Base_SSRMS = torch.tensor([[1.0,      0.0,       0.0, 1.0],
-                                      [0.0,     -1.0, -7.24e-06, 0.0],
-                                      [0.0, 7.24e-06,      -1.0, 1.5],
-                                      [0.0,      0.0,       0.0, 1.0]], device=self.device)
-        # tf_Base_SSRMS = torch.tensor([[1.0,  0.0,  0.0, 1.0],
-        #                               [0.0, -1.0,  0.0, 0.0],
-        #                               [0.0,  0.0, -1.0, 1.5],
-        #                               [0.0,  0.0,  0.0, 1.0]])
+
+        tf_Base_SSRMS = torch.eye(4, device=self.device)
+        tf_Base_SSRMS[0:3, 0:3] = euler_angles_to_matrix(torch.tensor([3.1416, 0.0, 0.0]), 'XYZ')
+        tf_Base_SSRMS[0:3, 3] = torch.tensor([1.0, 0.0, 1.5])
+
         self.fk_canadarm.set_mount_transformation(tf_Base_SSRMS)
         self.fk_canadarm.set_samples_and_timesteps(self.num_samples, self.num_timestep)
 
 
-    def compute_control(self):
+    def compute_control_input(self):
         pose_err = pose_diff(self.ee_pose, self.target_pose)
         if pose_err < 0.01:
+            self.logger.info("target reached!")
             return
 
         sample = self.sampling_state()
 
-        trajSamples = self.fk_canadarm.forward_kinematics(sample, 'EE_SSRMS')
+        traj_samples = self.fk_canadarm.forward_kinematics(sample, 'EE_SSRMS')
+        cost = self.tracking_cost(traj_samples)
+        u = self.update_control_input(sample, cost)
         
-        return
+        return u
 
 
     def sampling_state(self):
@@ -92,11 +97,42 @@ class MPPI():
             random_generator = torch.distributions.MultivariateNormal(loc=self.mu, covariance_matrix=self.sigma)
 
         noise = random_generator.sample((self.num_timestep,)).permute(1, 0, 2) # shape (sample, timestep, joint)
-        sample = noise + self._init_q.unsqueeze(0).unsqueeze(0).repeat(self.num_samples, self.num_timestep, 1)
+        sample = noise + self._init_q.expand(self.num_samples, self.num_timestep, self.num_joint).clone()
         return sample
     
 
+    def tracking_cost(self, sample):
+        ee_sample_pose = sample[:,:,0:3,3]
+        ee_sample_orientation = sample[:,:,0:3,0:3]
 
+        diff_pose = ee_sample_pose - self.target_pose.pose.to(device=self.device)
+        diff_orientation = matrix_to_quaternion(ee_sample_orientation) - self.target_pose.orientation.to(device=self.device)
+
+        cost_pose = torch.sum(torch.pow(diff_pose, 2), dim=2)
+        cost_orientation = torch.sum(torch.abs(diff_orientation), dim=2)
+
+        tracking_cost = self.tracking_pose_weight * cost_pose + self.tracking_orientation_weight * cost_orientation
+
+        # terminal cost
+        # tracking_cost[:,-1] += self.tracking_pose_weight * cost_pose + self.tracking_orientation_weight * cost_orientation
+
+        return tracking_cost
+
+    
+    def update_control_input(self, sample, cost):
+        
+
+
+
+        u_input = torch.zeros([self.num_timestep, self.num_joint])
+
+        # for t in range(self.num_timestep):
+        #     for k in range(self.num_samples):
+        #         u_input[t, k] += cost[:k] * sample[k, t]
+
+        # self.u_prev += u_input
+
+        return self.u_prev
 
 
 

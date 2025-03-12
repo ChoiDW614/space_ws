@@ -2,45 +2,22 @@ import rclpy
 from rclpy.node import Node
 
 from rclpy.qos import QoSProfile
-from rclpy.qos import HistoryPolicy
 from rclpy.qos import DurabilityPolicy
 from rclpy.qos import ReliabilityPolicy
 
-
-from std_msgs.msg import Float64MultiArray
-from sensor_msgs.msg import JointState
 from builtin_interfaces.msg import Duration
-from geometry_msgs.msg import Point, PoseStamped, Twist
-from visualization_msgs.msg import Marker, MarkerArray
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
-from nav_msgs.msg import Odometry
 from control_msgs.msg import DynamicJointState
+from tf2_msgs.msg import TFMessage
 
 from gazebo_msgs.srv import SetEntityState
 from std_srvs.srv import Empty
 
-import math
-import time
-import numpy as np
 import torch
-import functools
-import random
-from typing import Tuple
 
 from mppi_controller.src.solver.mppi_canadarm import MPPI
 from mppi_controller.src.robot.canadarm_wrapper import CanadarmWrapper
-
-
-class header():
-    def __init__(self):
-        self.frame_id = str()
-        self.stamp = None
-
-
-class header():
-    def __init__(self):
-        self.frame_id = str()
-        self.stamp = None
+from mppi_controller.src.utils.pose import Pose
 
 
 class mppiControllerNode(Node):
@@ -51,16 +28,21 @@ class mppiControllerNode(Node):
 
         self.controller = MPPI()
 
-        self.header = header()
-        self.cnt = 0
+        # joint control states
+        self.joint_names = None
         self.interface_name = None
-        self.interface_values = None
+        self.interface_values = None    
+
+        # base control states
+        self.base_transform = None
+        self.base_pose = Pose()
 
         # model state subscriber
         subscribe_qos_profile = QoSProfile(depth=5, reliability=ReliabilityPolicy.BEST_EFFORT, durability=DurabilityPolicy.VOLATILE)
         
         self.joint_state_subscriber = self.create_subscription(DynamicJointState, '/dynamic_joint_states', self.joint_state_callback, subscribe_qos_profile)
-        
+        self.base_state_subscriber = self.create_subscription(TFMessage, '/tf_static', self.joint_state_callback, subscribe_qos_profile)
+
         timer_period = 0.1  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
@@ -71,7 +53,7 @@ class mppiControllerNode(Node):
     
     
     def timer_callback(self):
-        self.controller.compute_control()
+        self.controller.compute_control_input()
 
         point1 = JointTrajectoryPoint()
         point1.positions = [1.0, -1.5, 2.0, -3.2, 0.8, 0.5, -1.0]
@@ -86,7 +68,15 @@ class mppiControllerNode(Node):
         self.interface_name = [iv.interface_names for iv in msg.interface_values]
         self.interface_values = torch.tensor([list(iv.values) for iv in msg.interface_values])
         self.controller.set_init_joint(self.interface_values)
-        # self.get_logger().info(str(self.controller._init_q))
+
+
+    def base_state_callback(self, msg):
+        if msg.transforms[0].child_frame_id == "Base_SSRMS":
+            self.base_transform = msg.transforms[0].transform
+            self.get_logger().info(str(self.base_transform))
+        else:
+            self.get_logger().info("not published")
+        return
 
 
 def main():
