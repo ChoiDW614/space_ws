@@ -95,3 +95,52 @@ def revolute_transform(xyz, rpy, axis, q):
     return tf_origin @ tf_rot
 
 
+def prismatic_transform_cpu(xyz, rpy, axis, q):
+    tf_origin = make_transform_matrix(xyz, rpy)
+
+    if torch.linalg.norm(axis) < 1e-12:
+        axis = tensor([1.0, 0.0, 0.0])
+    else:
+        axis = axis / torch.linalg.norm(axis)
+
+    tf_slide = eye(4)
+    tf_slide[:3, 3] = axis * q
+
+    return tf_origin @ tf_slide
+
+
+def revolute_transform_cpu(xyz, rpy, axis, q):
+    tf_origin = make_transform_matrix(xyz, rpy)
+
+    if torch.linalg.norm(axis) < 1e-12:
+        axis = tensor([1.0, 0.0, 0.0])
+    else:
+        axis = axis / torch.linalg.norm(axis)
+
+    c = cos(q)
+    s = sin(q)
+    omc = 1 - c
+
+    vx, vy, vz = axis
+
+    R00 = c + vx * vx * omc
+    R01 = vx * vy * omc - vz * s
+    R02 = vx * vz * omc + vy * s
+
+    R10 = vy * vx * omc + vz * s
+    R11 = c + vy * vy * omc
+    R12 = vy * vz * omc - vx * s
+
+    R20 = vz * vx * omc - vy * s
+    R21 = vz * vy * omc + vx * s
+    R22 = c + vz * vz * omc
+
+    R = tensor([[R00, R01, R02],
+                [R10, R11, R12],
+                [R20, R21, R22]])
+
+    tf_rot = eye(4)
+    tf_rot[:3, :3] = R
+
+    return tf_origin @ tf_rot
+

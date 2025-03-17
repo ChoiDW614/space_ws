@@ -15,7 +15,7 @@ from ament_index_python.packages import get_package_share_directory
 
 from mppi_controller.src.robot.urdfFks.urdfFk import URDFForwardKinematics
 from mppi_controller.src.utils.pose import Pose, pose_diff
-from mppi_controller.src.utils.rotation_conversions import matrix_to_quaternion, euler_angles_to_matrix
+from mppi_controller.src.utils.rotation_conversions import matrix_to_quaternion, euler_angles_to_matrix, matrix_to_euler_angles
 
 
 class MPPI():
@@ -49,6 +49,9 @@ class MPPI():
         self._init_qddot = torch.zeros(7, device=self.device)
         self.u_prev = torch.zeros(self.num_joint)
 
+        # base control states
+        self.base_pose = Pose()
+
         # Target states
         self.target_pose = Pose()
         self.target_pose.pose = torch.tensor([1.0, 1.0, 1.0])
@@ -61,19 +64,21 @@ class MPPI():
 
         # Import URDF for forward kinematics
         package_name = "mppi_controller"
-        urdf_file_path = os.path.join(get_package_share_directory(package_name), "models", "canadarm", "Canadarm2.urdf")
+        urdf_file_path = os.path.join(get_package_share_directory(package_name), "models", "canadarm", "Canadarm2_w_iss.urdf")
 
         self.fk_canadarm = URDFForwardKinematics(urdf_file_path, root_link='Base_SSRMS', end_links = 'EE_SSRMS')
 
-        tf_Base_SSRMS = torch.eye(4, device=self.device)
-        tf_Base_SSRMS[0:3, 0:3] = euler_angles_to_matrix(torch.tensor([3.1416, 0.0, 0.0]), 'XYZ')
-        tf_Base_SSRMS[0:3, 3] = torch.tensor([1.0, 0.0, 1.5])
+        mount_tf = torch.eye(4, device=self.device)
+        mount_tf[0:3, 0:3] = euler_angles_to_matrix(torch.tensor([3.1416, 0.0, 0.0]), 'XYZ')
+        mount_tf[0:3, 3] = torch.tensor([0.0, 0.0, 3.6])
 
-        self.fk_canadarm.set_mount_transformation(tf_Base_SSRMS)
+        self.fk_canadarm.set_mount_transformation(mount_tf)
         self.fk_canadarm.set_samples_and_timesteps(self.num_samples, self.num_timestep)
 
 
     def compute_control_input(self):
+        ee_pose = self.fk_canadarm.forward_kinematics_cpu(self._init_q, 'EE_SSRMS', self.base_pose.tf_matrix())
+        self.ee_pose.from_matrix(ee_pose)
         pose_err = pose_diff(self.ee_pose, self.target_pose)
         if pose_err < 0.01:
             self.logger.info("target reached!")
@@ -81,7 +86,8 @@ class MPPI():
 
         sample = self.sampling_state()
 
-        traj_samples = self.fk_canadarm.forward_kinematics(sample, 'EE_SSRMS')
+        traj_samples = self.fk_canadarm.forward_kinematics(sample, 'EE_SSRMS', self.base_pose.tf_matrix(self.device))
+
         cost = self.tracking_cost(traj_samples)
         u = self.update_control_input(sample, cost)
         
@@ -154,6 +160,10 @@ class MPPI():
     def set_ee_pose(self, pos, ori):
         self.ee_pose.pose = pos
         self.ee_pose.orientation = ori
+
+    def set_base_pose(self, pos, ori):
+        self.base_pose.pose = pos
+        self.base_pose.orientation = ori
 
     def set_target_pose(self, pos, ori):
         self.target_pose.pose = pos

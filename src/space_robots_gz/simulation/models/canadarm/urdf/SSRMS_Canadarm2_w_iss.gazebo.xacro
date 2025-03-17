@@ -3,7 +3,6 @@
 
   <xacro:macro name="ssrms_canadarm2_gazebo" params="command_interface:=effort">
 
-
   <ros2_control name="IgnitionSystem" type="system">
       <hardware>
           <plugin>ign_ros2_control/IgnitionSystem</plugin>
@@ -58,8 +57,6 @@
       <robot_param_node>robot_state_publisher</robot_param_node>
       <parameters>$(find canadarm)/config/canadarm_control.yaml</parameters>
       </plugin>
-      <!-- Base Link State Publisher-->
-      <plugin filename="libcanadarm_gz_plugin.so" name="canadarm_gz_plugin"></plugin>
   </gazebo>
 
   <!-- Colors -->

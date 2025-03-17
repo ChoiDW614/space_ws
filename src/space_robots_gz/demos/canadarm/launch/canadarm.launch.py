@@ -15,7 +15,6 @@ import xacro
 
 def generate_launch_description():
     # ld = LaunchDescription()
-
     canadarm_demos_path = get_package_share_directory('canadarm')
     simulation_models_path = get_package_share_directory('simulation')
 
@@ -28,7 +27,7 @@ def generate_launch_description():
 
     urdf_model_path = os.path.join(simulation_models_path, 'models', 'canadarm', 'urdf', 'SSRMS_Canadarm2_w_iss.urdf.xacro')
     leo_model = os.path.join(canadarm_demos_path, 'worlds', 'simple_wo_iss.world')
-
+    # bridge_config_path = os.path.join(canadarm_demos_path, 'config', 'bridge_config.yaml')
 
     doc = xacro.process_file(urdf_model_path)
     robot_description = {'robot_description': doc.toxml()}
@@ -58,6 +57,14 @@ def generate_launch_description():
         output='screen'
     )
 
+    pose_publisher = ExecuteProcess(
+        cmd=[
+            'ros2', 'run', 'ros_gz_bridge', 'parameter_bridge',
+            '/world/default/pose/info@geometry_msgs/msg/PoseArray@ignition.msgs.Pose_V'
+        ],
+        shell=False
+    )
+
     # Control
     load_joint_state_broadcaster = ExecuteProcess(
         cmd=['ros2', 'control', 'load_controller', '--set-state', 'active',
@@ -74,6 +81,7 @@ def generate_launch_description():
     return LaunchDescription([
         start_world,
         robot_state_publisher,
+        pose_publisher,
         spawn,
 
         RegisterEventHandler(

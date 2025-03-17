@@ -8,7 +8,7 @@ from rclpy.qos import ReliabilityPolicy
 from builtin_interfaces.msg import Duration
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from control_msgs.msg import DynamicJointState
-from tf2_msgs.msg import TFMessage
+from geometry_msgs.msg import PoseArray
 
 from gazebo_msgs.srv import SetEntityState
 from std_srvs.srv import Empty
@@ -31,17 +31,13 @@ class mppiControllerNode(Node):
         # joint control states
         self.joint_names = None
         self.interface_name = None
-        self.interface_values = None    
-
-        # base control states
-        self.base_transform = None
-        self.base_pose = Pose()
+        self.interface_values = None
 
         # model state subscriber
         subscribe_qos_profile = QoSProfile(depth=5, reliability=ReliabilityPolicy.BEST_EFFORT, durability=DurabilityPolicy.VOLATILE)
         
         self.joint_state_subscriber = self.create_subscription(DynamicJointState, '/dynamic_joint_states', self.joint_state_callback, subscribe_qos_profile)
-        self.base_state_subscriber = self.create_subscription(TFMessage, '/tf_static', self.joint_state_callback, subscribe_qos_profile)
+        self.base_state_subscriber = self.create_subscription(PoseArray, '/world/default/pose/info', self.base_state_callback, subscribe_qos_profile)
 
         timer_period = 0.1  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
@@ -71,12 +67,7 @@ class mppiControllerNode(Node):
 
 
     def base_state_callback(self, msg):
-        if msg.transforms[0].child_frame_id == "Base_SSRMS":
-            self.base_transform = msg.transforms[0].transform
-            self.get_logger().info(str(self.base_transform))
-        else:
-            self.get_logger().info("not published")
-        return
+        self.controller.set_base_pose(msg.poses[1].position, msg.poses[1].orientation) # poses[1] -> base pose (ros_gz_bridge)
 
 
 def main():

@@ -105,7 +105,8 @@ RUN sudo apt-get update --fix-missing && sudo apt-get install -y \
   ros-humble-rmw-cyclonedds-cpp \
   ros-humble-demo-nodes-cpp \ 
   ros-humble-gazebo-ros \
-  ros-humble-gazebo-dev
+  ros-humble-gazebo-dev \
+  ros-humble-ros-gz-bridge
 
 # Setup the entrypoint
 COPY ./entrypoint.sh /

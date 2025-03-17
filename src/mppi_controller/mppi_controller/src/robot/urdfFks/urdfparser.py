@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from typing import List, Set
 from urdf_parser_py.urdf import URDF
-from mppi_controller.src.robot.urdfFks.transformation_matrix import prismatic_transform, revolute_transform, make_transform_matrix
+from mppi_controller.src.robot.urdfFks.transformation_matrix import *
 
 
 class URDFparser(object):
@@ -125,6 +125,7 @@ class URDFparser(object):
 
         for jt in self._joint_chain_list:
             jtype = jt.type
+
             xyz = torch.tensor(jt.origin.xyz)
             rpy = torch.tensor(jt.origin.rpy)
 
@@ -140,7 +141,7 @@ class URDFparser(object):
                 q_val = torch.zeros([self._n_samples, self._n_timestep])
 
             if jtype == "fixed":
-                tf_local = make_transform_matrix(xyz, rpy)
+                tf_local = make_transform_matrix(xyz, rpy).to(device=q.device)
                 tf_fk = tf_fk @ tf_local
             elif jtype == "prismatic":
                 tf_local = prismatic_transform(xyz, rpy, axis, q_val)
@@ -149,8 +150,45 @@ class URDFparser(object):
                 tf_local = revolute_transform(xyz, rpy, axis, q_val)
                 tf_fk = tf_fk @ tf_local
             else:
-                tf_local = make_transform_matrix(xyz, rpy)
+                tf_local = make_transform_matrix(xyz, rpy).to(device=q.device)
                 tf_fk = tf_fk @ tf_local
 
         return tf_fk
 
+    def forward_kinematics_cpu(self, q: torch.Tensor):
+        if self.robot_desc is None:
+            raise ValueError("Robot description not loaded.") 
+
+        tf_fk = self._tf_fk.clone()
+
+        for jt in self._joint_chain_list:
+            jtype = jt.type
+
+            xyz = torch.tensor(jt.origin.xyz)
+            rpy = torch.tensor(jt.origin.rpy)
+
+            if jt.axis is None:
+                axis = torch.tensor([1.0, 0.0, 0.0])
+            else:
+                axis = torch.tensor(jt.axis)
+
+            if jt.name in self._joint_map:
+                q_idx = self._joint_map[jt.name]
+                q_val = q[q_idx]
+            else:
+                q_val = torch.zeros(1)
+
+            if jtype == "fixed":
+                tf_local = make_transform_matrix(xyz, rpy)
+                tf_fk = tf_fk @ tf_local
+            elif jtype == "prismatic":
+                tf_local = prismatic_transform_cpu(xyz, rpy, axis, q_val)
+                tf_fk = tf_fk @ tf_local
+            elif jtype in ["revolute", "continuous"]:
+                tf_local = revolute_transform_cpu(xyz, rpy, axis, q_val)
+                tf_fk = tf_fk @ tf_local
+            else:
+                tf_local = make_transform_matrix(xyz, rpy)
+                tf_fk = tf_fk @ tf_local
+
+        return tf_fk
