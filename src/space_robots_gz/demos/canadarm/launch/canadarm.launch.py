@@ -27,7 +27,6 @@ def generate_launch_description():
 
     urdf_model_path = os.path.join(simulation_models_path, 'models', 'canadarm', 'urdf', 'SSRMS_Canadarm2_w_iss.urdf.xacro')
     leo_model = os.path.join(canadarm_demos_path, 'worlds', 'simple_wo_iss.world')
-    # bridge_config_path = os.path.join(canadarm_demos_path, 'config', 'bridge_config.yaml')
 
     doc = xacro.process_file(urdf_model_path)
     robot_description = {'robot_description': doc.toxml()}
@@ -72,9 +71,15 @@ def generate_launch_description():
         output='screen'
     )
 
+    # load_canadarm_joint_controller = ExecuteProcess(
+    #     cmd=['ros2', 'control', 'load_controller', '--set-state', 'active',
+    #          'canadarm_joint_trajectory_controller'],
+    #     output='screen'
+    # )
+
     load_canadarm_joint_controller = ExecuteProcess(
         cmd=['ros2', 'control', 'load_controller', '--set-state', 'active',
-             'canadarm_joint_trajectory_controller'],
+             'canadarm_joint_controller'],
         output='screen'
     )
 

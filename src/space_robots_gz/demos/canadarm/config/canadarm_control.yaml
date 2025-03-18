@@ -40,7 +40,7 @@ canadarm_joint_controller:
       - Wrist_Yaw
       - Wrist_Roll
     command_interfaces:
-      - effort
+      - position 
     state_interfaces:
       - position
       - velocity

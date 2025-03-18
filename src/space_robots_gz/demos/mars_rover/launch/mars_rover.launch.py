@@ -36,17 +36,17 @@ def generate_launch_description():
     doc = xacro.process_file(urdf_model_path)
     robot_description = {'robot_description': doc.toxml()}
 
-    # arm_node = Node(
-    #     package="mars_rover",
-    #     executable="move_arm",
-    #     output='screen'
-    # )
+    arm_node = Node(
+        package="mars_rover",
+        executable="move_arm",
+        output='screen'
+    )
 
-    # mast_node = Node(
-    #     package="mars_rover",
-    #     executable="move_mast",
-    #     output='screen'
-    # )
+    mast_node = Node(
+        package="mars_rover",
+        executable="move_mast",
+        output='screen'
+    )
 
     wheel_node = Node(
         package="mars_rover",
@@ -54,11 +54,11 @@ def generate_launch_description():
         output='screen'
     )
 
-    # run_node = Node(
-    #     package="mars_rover",
-    #     executable="run_demo",
-    #     output='screen'
-    # )
+    run_node = Node(
+        package="mars_rover",
+        executable="run_demo",
+        output='screen'
+    )
 
     odom_node = Node(
         package="mars_rover",
@@ -161,10 +161,10 @@ def generate_launch_description():
         start_world,
         robot_state_publisher,
         spawn,
-        # arm_node,
-        # mast_node,
+        arm_node,
+        mast_node,
         wheel_node,
-        # run_node,
+        run_node,
         odom_node,
         ros_gz_bridge,
         image_bridge,

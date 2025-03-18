@@ -9,10 +9,12 @@ from builtin_interfaces.msg import Duration
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from control_msgs.msg import DynamicJointState
 from geometry_msgs.msg import PoseArray
+from std_msgs.msg import Float64MultiArray
 
 from gazebo_msgs.srv import SetEntityState
 from std_srvs.srv import Empty
 
+import numpy as np
 import torch
 
 from mppi_controller.src.solver.mppi_canadarm import MPPI
@@ -28,6 +30,8 @@ class mppiControllerNode(Node):
 
         self.controller = MPPI()
 
+        self.target_pose = Pose()
+
         # joint control states
         self.joint_names = None
         self.interface_name = None
@@ -39,24 +43,38 @@ class mppiControllerNode(Node):
         self.joint_state_subscriber = self.create_subscription(DynamicJointState, '/dynamic_joint_states', self.joint_state_callback, subscribe_qos_profile)
         self.base_state_subscriber = self.create_subscription(PoseArray, '/world/default/pose/info', self.base_state_callback, subscribe_qos_profile)
 
-        timer_period = 0.1  # seconds
+        timer_period = 1  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
         # arm publisher
-        self.traj_msg = JointTrajectory()
-        self.traj_msg.joint_names = ["Base_Joint", "Shoulder_Roll", "Shoulder_Yaw", "Elbow_Pitch", "Wrist_Pitch", "Wrist_Yaw", "Wrist_Roll"]
-        self.arm_publisher = self.create_publisher(JointTrajectory, '/canadarm_joint_trajectory_controller/joint_trajectory', 10)
+        # self.traj_msg = JointTrajectory()
+        # self.traj_msg.joint_names = ["Base_Joint", "Shoulder_Roll", "Shoulder_Yaw", "Elbow_Pitch", "Wrist_Pitch", "Wrist_Yaw", "Wrist_Roll"]
+        # self.arm_publisher = self.create_publisher(JointTrajectory, '/canadarm_joint_trajectory_controller/joint_trajectory', 10)
+        self.arm_msg = Float64MultiArray()
+        self.arm_publisher = self.create_publisher(Float64MultiArray, '/canadarm_joint_controller/commands', 10)
+
+        self.target_state_callback()
+
+
+    def target_state_callback(self):
+        self.target_pose.pose = torch.tensor([-2.1649, 4.4368, 18.3509])
+        self.target_pose.orientation = torch.tensor([0.4630, -0.4653, -0.4581, 0.5994]) # euler angle rpy : -1.43, 0.16, 1.71
+        self.controller.set_target_pose(self.target_pose)
     
-    
+
     def timer_callback(self):
-        self.controller.compute_control_input()
+        u = self.controller.compute_control_input()
 
-        point1 = JointTrajectoryPoint()
-        point1.positions = [1.0, -1.5, 2.0, -3.2, 0.8, 0.5, -1.0]
-        point1.time_from_start = Duration(sec=0)
+        # point1 = JointTrajectoryPoint()
+        # # point1.positions = [1.0, -1.5, 2.0, -3.2, 0.8, 0.5, -1.0]
+        # point1.positions = u.tolist()
+        #point1.time_from_start = Duration(sec=0)
 
-        self.traj_msg.points.append(point1)
-        self.arm_publisher.publish(self.traj_msg)
+        # self.traj_msg.points.append(point1)
+        # self.arm_publisher.publish(self.traj_msg)
+
+        self.arm_msg.data = u.tolist()
+        self.arm_publisher.publish(self.arm_msg)
 
 
     def joint_state_callback(self, msg):

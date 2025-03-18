@@ -1,7 +1,6 @@
 <sdf version="1.5">
   <world name="default">
     <gui fullscreen="0">
-
       <plugin filename="GzScene3D" name="3D View">
         <ignition-gui>
           <title>3D View</title>

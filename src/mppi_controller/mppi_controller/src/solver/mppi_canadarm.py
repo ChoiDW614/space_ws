@@ -14,7 +14,7 @@ from rclpy.logging import get_logger
 from ament_index_python.packages import get_package_share_directory
 
 from mppi_controller.src.robot.urdfFks.urdfFk import URDFForwardKinematics
-from mppi_controller.src.utils.pose import Pose, pose_diff
+from mppi_controller.src.utils.pose import Pose, pose_diff, pos_diff
 from mppi_controller.src.utils.rotation_conversions import matrix_to_quaternion, euler_angles_to_matrix, matrix_to_euler_angles
 
 
@@ -36,11 +36,17 @@ class MPPI():
         self.num_samples = 1024
         self.num_timestep = 256
 
-        self.reset_mu = torch.zeros(self.num_samples, self.num_joint, device=self.device)
-        self.reset_sigma = torch.stack([torch.eye(self.num_joint, device=self.device) for _ in range(self.num_samples)], dim=0)
+        # self.num_samples = 5
+        # self.num_timestep = 3
+
+        self.reset_mu = torch.zeros(self.num_timestep, self.num_joint, device=self.device)
+        self.reset_sigma = torch.stack([torch.eye(self.num_joint, device=self.device) for _ in range(self.num_timestep)], dim=0)
 
         self.mu = self.reset_mu.clone()
         self.sigma = self.reset_sigma.clone()
+
+        self.alpha_mu = 0.1
+        self.alpha_sigma = 0.1
 
         # Manipulator states
         self.ee_pose = Pose()
@@ -58,9 +64,10 @@ class MPPI():
         self.target_pose.orientation = torch.tensor([1.0, 0.0, 1.0, 1.0])
 
         # cost weight parameters
-        self.tracking_pose_weight = 1.0
-        self.tracking_orientation_weight = 5.0
-
+        self._tracking_pose_weight = 1.0
+        self._tracking_orientation_weight = 5.0
+        self._gamma = 0.95
+        self._lambda = 0.01
 
         # Import URDF for forward kinematics
         package_name = "mppi_controller"
@@ -77,13 +84,14 @@ class MPPI():
 
 
     def compute_control_input(self):
-        ee_pose = self.fk_canadarm.forward_kinematics_cpu(self._init_q, 'EE_SSRMS', self.base_pose.tf_matrix())
-        self.ee_pose.from_matrix(ee_pose)
-        pose_err = pose_diff(self.ee_pose, self.target_pose)
+        self.ee_pose.from_matrix(self.fk_canadarm.forward_kinematics_cpu(self._init_q, 'EE_SSRMS', self.base_pose.tf_matrix()))
+        pose_err = pos_diff(self.ee_pose, self.target_pose)
+        self.logger.info("pose err: " + str(round(pose_err.detach().item(), 3)))
         if pose_err < 0.01:
             self.logger.info("target reached!")
-            return
+            return self.u_prev
 
+        # sampling
         sample = self.sampling_state()
 
         traj_samples = self.fk_canadarm.forward_kinematics(sample, 'EE_SSRMS', self.base_pose.tf_matrix(self.device))
@@ -91,6 +99,8 @@ class MPPI():
         cost = self.tracking_cost(traj_samples)
         u = self.update_control_input(sample, cost)
         
+        # save previous control input
+        self.u_prev = u
         return u
 
 
@@ -102,7 +112,8 @@ class MPPI():
             self.sigma = self.reset_sigma.clone()
             random_generator = torch.distributions.MultivariateNormal(loc=self.mu, covariance_matrix=self.sigma)
 
-        noise = random_generator.sample((self.num_timestep,)).permute(1, 0, 2) # shape (sample, timestep, joint)
+        # sample = random_generator.sample((self.num_samples,)).permute(1, 0, 2) # shape (sample, timestep, joint)
+        noise = self._init_q + random_generator.sample((self.num_samples,)) # shape (sample, timestep, joint)
         sample = noise + self._init_q.expand(self.num_samples, self.num_timestep, self.num_joint).clone()
         return sample
     
@@ -112,38 +123,49 @@ class MPPI():
         ee_sample_orientation = sample[:,:,0:3,0:3]
 
         diff_pose = ee_sample_pose - self.target_pose.pose.to(device=self.device)
-        diff_orientation = matrix_to_quaternion(ee_sample_orientation) - self.target_pose.orientation.to(device=self.device)
+        # diff_orientation = matrix_to_quaternion(ee_sample_orientation) - self.target_pose.orientation.to(device=self.device)
 
         cost_pose = torch.sum(torch.pow(diff_pose, 2), dim=2)
-        cost_orientation = torch.sum(torch.abs(diff_orientation), dim=2)
+        # cost_orientation = torch.sum(torch.abs(diff_orientation), dim=2)
 
-        tracking_cost = self.tracking_pose_weight * cost_pose + self.tracking_orientation_weight * cost_orientation
+        # cost = torch.zeros([self.num_samples, self.num_timestep, self.num_joint], device=self.device)
 
+        # tracking_cost = self._tracking_pose_weight * cost_pose + self._tracking_orientation_weight * cost_orientation
+        tracking_cost = self._tracking_pose_weight * cost_pose
+        # tracking_cost = torch.zeros([self.num_samples, self.num_timestep], device=self.device)
         # terminal cost
-        # tracking_cost[:,-1] += self.tracking_pose_weight * cost_pose + self.tracking_orientation_weight * cost_orientation
-
+        # tracking_cost[:,-1] += self._tracking_pose_weight * cost_pose[:,-1] + self._tracking_orientation_weight * cost_orientation[:,-1]
+        tracking_cost[:,-1] += self._tracking_pose_weight * cost_pose[:,-1]
+        
+        # cost += tracking_cost.unsqueeze(-1).repeat(1, 1, 7)
+        # self.logger.info(str(tracking_cost))
         return tracking_cost
 
     
     def update_control_input(self, sample, cost):
-        
+        weights = self._gamma ** torch.arange(self.num_timestep, device=self.device)
+        final_cost = torch.sum(cost * weights, dim=1)
 
+        final_cost -= torch.min(final_cost)
 
+        # self.logger.info(str(final_cost))
 
-        u_input = torch.zeros([self.num_timestep, self.num_joint])
+        cost_sum = torch.sum(torch.exp(-final_cost / self._lambda))
 
-        # for t in range(self.num_timestep):
-        #     for k in range(self.num_samples):
-        #         u_input[t, k] += cost[:k] * sample[k, t]
+        sample = sample[:,0,:].cpu()
+        final_cost = final_cost.cpu()
+        cost_sum = cost_sum.cpu()
 
-        # self.u_prev += u_input
+        u_input = torch.exp(-final_cost / self._lambda) @ sample / cost_sum
 
-        return self.u_prev
+        # update_mu = u_input
+        # self.mu = (1 - self.alpha_mu) * self.mu + self.alpha_mu * update_mu
 
+        # self.mu = u_input.to(self.device)
+        # update_sigma = 
+        # self.sigma = (1 - self.alpha_sigma) * self.sigma + self.alpha_sigma * update_sigma
 
-
-
-
+        return u_input
 
 
 
@@ -168,6 +190,10 @@ class MPPI():
     def set_target_pose(self, pos, ori):
         self.target_pose.pose = pos
         self.target_pose.orientation = ori
+    
+    def set_target_pose(self, pose: Pose):
+        self.target_pose.pose = pose.pose
+        self.target_pose.orientation = pose.orientation
 
     def reset_sampling_weight(self):
         self.mu = self.reset_mu.clone()

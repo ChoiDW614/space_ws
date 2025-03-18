@@ -46,3 +46,7 @@ def pose_diff(ppos1: Pose, ppose2: Pose):
     pose_difference = torch.sum(torch.abs(ppos1.pose - ppose2.pose))
     orientation_difference = torch.sum(torch.abs(ppos1.orientation - ppose2.orientation))
     return pose_difference + orientation_difference
+
+def pos_diff(ppos1: Pose, ppose2: Pose):
+    pose_difference = torch.sum(torch.abs(ppos1.pose - ppose2.pose))
+    return pose_difference
