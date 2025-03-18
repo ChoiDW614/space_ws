@@ -72,7 +72,7 @@ def generate_launch_description():
     # Control
     load_joint_state_broadcaster = ExecuteProcess(
         cmd=['ros2', 'control', 'load_controller', '--set-state', 'active',
-             'joint_state_broadcaster'],
+             'canadarm_joint_state_broadcaster'],
         output='screen'
     )
 

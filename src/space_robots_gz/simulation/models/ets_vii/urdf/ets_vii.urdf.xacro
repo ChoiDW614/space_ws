@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 <robot name="ets_vii" xmlns:xacro="http://www.ros.org/wiki/xacro">
-  <xacro:property name="pi" value="3.14159265"/>
+  <xacro:include filename="$(find simulation)/models/ets_vii/urdf/ets_vii.gazebo.xacro" />
+  <xacro:ets_vii_gazebo command_interface="effort" />
 
   <link name="base_link">
     <visual>
@@ -138,7 +139,7 @@
     </collision>
     <inertial>
       <mass value="26.2"/>
-      <inertia ixx="0.57" ixy="0" ixz="-0.231" iyy="0.599" iyz="0" izz="0.129"/>
+      <inertia ixx="0.57" ixy="0" ixz="-0.231" iyy="0.599" iyz="0" izz="0.258"/>
     </inertial>
   </link>
 
@@ -168,13 +169,12 @@
     </inertial>
   </link>
 
-   <joint name="joint6" type="revolute">
+  <joint name="joint6" type="revolute">
     <axis xyz="1 0 0"/>
     <limit effort="1000.0" lower="-3.0" upper="3.0" velocity="0.5"/>
     <parent link="link_5" />
     <child link="link_6" />
     <origin xyz="0.225 0 0" rpy="0 0 0" />
   </joint>
-
 
 </robot>

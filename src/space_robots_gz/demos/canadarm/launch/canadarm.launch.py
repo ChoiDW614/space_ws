@@ -1,9 +1,10 @@
 from http.server import executable
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, RegisterEventHandler
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, RegisterEventHandler, IncludeLaunchDescription
 from launch.substitutions import TextSubstitution, PathJoinSubstitution, LaunchConfiguration, Command
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.event_handlers import OnProcessExit, OnExecutionComplete
 import os
 from os import environ
@@ -39,11 +40,12 @@ def generate_launch_description():
     )
 
     robot_state_publisher = Node(
-            package='robot_state_publisher',
-            executable='robot_state_publisher',
-            name='robot_state_publisher',
-            output='screen',
-            parameters=[robot_description])
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        name='robot_state_publisher',
+        output='screen',
+        parameters=[robot_description]
+    )
 
     spawn = Node(
         package='ros_ign_gazebo', executable='create',
@@ -67,7 +69,7 @@ def generate_launch_description():
     # Control
     load_joint_state_broadcaster = ExecuteProcess(
         cmd=['ros2', 'control', 'load_controller', '--set-state', 'active',
-             'joint_state_broadcaster'],
+             'canadarm_joint_state_broadcaster'],
         output='screen'
     )
 
@@ -83,11 +85,18 @@ def generate_launch_description():
         output='screen'
     )
 
+    ets_vii_target_spawn = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(get_package_share_directory('ets_vii'),
+                'launch/spawn_ets_vii.launch.py')),
+        launch_arguments=[]
+    )
+
     return LaunchDescription([
         start_world,
         robot_state_publisher,
         pose_publisher,
         spawn,
+        ets_vii_target_spawn,
 
         RegisterEventHandler(
             OnProcessExit(

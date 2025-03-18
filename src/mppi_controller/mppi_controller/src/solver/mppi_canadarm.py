@@ -50,10 +50,10 @@ class MPPI():
 
         # Manipulator states
         self.ee_pose = Pose()
-        self._init_q = torch.zeros(7, device=self.device)
-        self._init_qdot = torch.zeros(7, device=self.device)
-        self._init_qddot = torch.zeros(7, device=self.device)
-        self.u_prev = torch.zeros(self.num_joint)
+        self._init_q = torch.zeros(self.num_joint, device=self.device)
+        self._init_qdot = torch.zeros(self.num_joint, device=self.device)
+        self._init_qddot = torch.zeros(self.num_joint, device=self.device)
+        self.u_prev = torch.zeros(self.num_joint, device=self.device)
 
         # base control states
         self.base_pose = Pose()
@@ -67,7 +67,7 @@ class MPPI():
         self._tracking_pose_weight = 1.0
         self._tracking_orientation_weight = 5.0
         self._gamma = 0.95
-        self._lambda = 0.01
+        self._lambda = 10.0
 
         # Import URDF for forward kinematics
         package_name = "mppi_controller"
@@ -92,16 +92,17 @@ class MPPI():
             return self.u_prev
 
         # sampling
-        sample = self.sampling_state()
+        noise = self.sampling_state()
 
-        traj_samples = self.fk_canadarm.forward_kinematics(sample, 'EE_SSRMS', self.base_pose.tf_matrix(self.device))
+        traj_samples = self.fk_canadarm.forward_kinematics(noise, 'EE_SSRMS', self.base_pose.tf_matrix(self.device))
 
-        cost = self.tracking_cost(traj_samples)
-        u = self.update_control_input(sample, cost)
+        tracking_cost = self.tracking_cost(traj_samples)
+        terminal_cost = self.terminal_cost()
+        u = self.update_control_input(noise, tracking_cost, terminal_cost)
         
         # save previous control input
         self.u_prev = u
-        return u
+        return u[0]
 
 
     def sampling_state(self):
@@ -112,10 +113,8 @@ class MPPI():
             self.sigma = self.reset_sigma.clone()
             random_generator = torch.distributions.MultivariateNormal(loc=self.mu, covariance_matrix=self.sigma)
 
-        # sample = random_generator.sample((self.num_samples,)).permute(1, 0, 2) # shape (sample, timestep, joint)
-        noise = self._init_q + random_generator.sample((self.num_samples,)) # shape (sample, timestep, joint)
-        sample = noise + self._init_q.expand(self.num_samples, self.num_timestep, self.num_joint).clone()
-        return sample
+        noise = random_generator.sample((self.num_samples,)) # shape (sample, timestep, joint)
+        return noise
     
 
     def tracking_cost(self, sample):
@@ -128,44 +127,46 @@ class MPPI():
         cost_pose = torch.sum(torch.pow(diff_pose, 2), dim=2)
         # cost_orientation = torch.sum(torch.abs(diff_orientation), dim=2)
 
-        # cost = torch.zeros([self.num_samples, self.num_timestep, self.num_joint], device=self.device)
-
         # tracking_cost = self._tracking_pose_weight * cost_pose + self._tracking_orientation_weight * cost_orientation
         tracking_cost = self._tracking_pose_weight * cost_pose
-        # tracking_cost = torch.zeros([self.num_samples, self.num_timestep], device=self.device)
-        # terminal cost
-        # tracking_cost[:,-1] += self._tracking_pose_weight * cost_pose[:,-1] + self._tracking_orientation_weight * cost_orientation[:,-1]
-        tracking_cost[:,-1] += self._tracking_pose_weight * cost_pose[:,-1]
-        
-        # cost += tracking_cost.unsqueeze(-1).repeat(1, 1, 7)
-        # self.logger.info(str(tracking_cost))
+
+        gamma = self._gamma ** torch.arange(self.num_timestep, device=self.device)
+        tracking_cost = tracking_cost * gamma
         return tracking_cost
+    
+
+    def terminal_cost(self):
+        terminal_cost = torch.zeros([self.num_samples, self.num_joint])
+        terminal_cost = (self._gamma ** self.num_timestep) * torch.zeros([self.num_samples], device=self.device)
+        return terminal_cost
 
     
-    def update_control_input(self, sample, cost):
-        weights = self._gamma ** torch.arange(self.num_timestep, device=self.device)
-        final_cost = torch.sum(cost * weights, dim=1)
-
+    def update_control_input(self, noise, tracking_cost, terminal_cost):
+        final_cost = torch.sum(tracking_cost, dim=1)
+        final_cost += terminal_cost
         final_cost -= torch.min(final_cost)
 
-        # self.logger.info(str(final_cost))
+        weight = torch.softmax(-final_cost / self._lambda, dim=0)
 
-        cost_sum = torch.sum(torch.exp(-final_cost / self._lambda))
+        self.mu = torch.sum(
+            weight.view(self.num_samples, 1, 1) * noise, dim=0
+        )
 
-        sample = sample[:,0,:].cpu()
-        final_cost = final_cost.cpu()
-        cost_sum = cost_sum.cpu()
+        diff = noise - self.mu.unsqueeze(0)
+        update_sigma = torch.einsum(
+            'n,nhr,nhc->hrc',
+            weight,
+            diff,
+            diff
+        )
+        self.sigma = (1 - self.alpha_sigma) * self.sigma + self.alpha_sigma * update_sigma
 
-        u_input = torch.exp(-final_cost / self._lambda) @ sample / cost_sum
+        self.logger.info("sigma sum: " + str(round(torch.sum(self.sigma).detach().item(), 3)))
+        
+        return self.mu
 
-        # update_mu = u_input
-        # self.mu = (1 - self.alpha_mu) * self.mu + self.alpha_mu * update_mu
 
-        # self.mu = u_input.to(self.device)
-        # update_sigma = 
-        # self.sigma = (1 - self.alpha_sigma) * self.sigma + self.alpha_sigma * update_sigma
 
-        return u_input
 
 
 

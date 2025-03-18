@@ -14,6 +14,7 @@ from std_msgs.msg import Float64MultiArray
 from gazebo_msgs.srv import SetEntityState
 from std_srvs.srv import Empty
 
+import time
 import numpy as np
 import torch
 
@@ -47,9 +48,6 @@ class mppiControllerNode(Node):
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
         # arm publisher
-        # self.traj_msg = JointTrajectory()
-        # self.traj_msg.joint_names = ["Base_Joint", "Shoulder_Roll", "Shoulder_Yaw", "Elbow_Pitch", "Wrist_Pitch", "Wrist_Yaw", "Wrist_Roll"]
-        # self.arm_publisher = self.create_publisher(JointTrajectory, '/canadarm_joint_trajectory_controller/joint_trajectory', 10)
         self.arm_msg = Float64MultiArray()
         self.arm_publisher = self.create_publisher(Float64MultiArray, '/canadarm_joint_controller/commands', 10)
 
@@ -63,15 +61,11 @@ class mppiControllerNode(Node):
     
 
     def timer_callback(self):
+        # start_time = time.time()
         u = self.controller.compute_control_input()
+        # end_time = time.time()
 
-        # point1 = JointTrajectoryPoint()
-        # # point1.positions = [1.0, -1.5, 2.0, -3.2, 0.8, 0.5, -1.0]
-        # point1.positions = u.tolist()
-        #point1.time_from_start = Duration(sec=0)
-
-        # self.traj_msg.points.append(point1)
-        # self.arm_publisher.publish(self.traj_msg)
+        # self.get_logger().info(str(end_time-start_time))
 
         self.arm_msg.data = u.tolist()
         self.arm_publisher.publish(self.arm_msg)
