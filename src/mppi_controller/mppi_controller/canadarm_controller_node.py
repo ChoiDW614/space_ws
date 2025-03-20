@@ -44,8 +44,10 @@ class mppiControllerNode(Node):
         self.joint_state_subscriber = self.create_subscription(DynamicJointState, '/dynamic_joint_states', self.joint_state_callback, subscribe_qos_profile)
         self.base_state_subscriber = self.create_subscription(PoseArray, '/world/default/pose/info', self.base_state_callback, subscribe_qos_profile)
 
-        timer_period = 1  # seconds
-        self.timer = self.create_timer(timer_period, self.timer_callback)
+        cal_timer_period = 0.1  # seconds
+        pub_timer_period = 1  # seconds
+        self.cal_timer = self.create_timer(cal_timer_period, self.cal_timer_callback)
+        self.pub_timer = self.create_timer(pub_timer_period, self.pub_timer_callback)
 
         # arm publisher
         self.arm_msg = Float64MultiArray()
@@ -60,14 +62,16 @@ class mppiControllerNode(Node):
         self.controller.set_target_pose(self.target_pose)
     
 
-    def timer_callback(self):
+    def cal_timer_callback(self):
         # start_time = time.time()
         u = self.controller.compute_control_input()
+        self.arm_msg.data = u.tolist()
         # end_time = time.time()
 
         # self.get_logger().info(str(end_time-start_time))
 
-        self.arm_msg.data = u.tolist()
+
+    def pub_timer_callback(self):
         self.arm_publisher.publish(self.arm_msg)
 
 
