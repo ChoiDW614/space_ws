@@ -129,7 +129,6 @@ class MPPI():
         final_cost = torch.sum(tracking_cost, dim=1)
         final_cost += terminal_cost
 
-        self.logger.info(str(torch.sum(final_cost)))
         final_cost -= torch.min(final_cost)
 
         weight = torch.softmax(-final_cost / self._lambda, dim=0)
