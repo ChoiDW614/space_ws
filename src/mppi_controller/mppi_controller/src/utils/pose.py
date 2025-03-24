@@ -36,7 +36,7 @@ class Pose():
             matrix = torch.eye(4)
         else:
             matrix = torch.eye(4, device=device)
-        matrix[0:3, 0:3] = self.__tf
+        matrix[0:3, 0:3] = quaternion_to_matrix(self.__orientation)
         matrix[0:3, 3] = self.__pose
         return matrix
     

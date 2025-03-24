@@ -37,7 +37,7 @@ def generate_launch_description():
         arguments=[
             '-name', 'ets_vii',
             '-topic', ets_vii_robot_description,
-            '-x', '-2.1649', '-y', '4.4368', '-z', '18.3509',
+            '-x', '-2.1649', '-y', '4.4368', '-z', '12.3509',
             '-R', '-1.43', '-P', '0.16', '-Y', '1.71',
         ],
         output='screen'

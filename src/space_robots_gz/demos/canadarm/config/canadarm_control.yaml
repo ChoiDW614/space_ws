@@ -3,7 +3,7 @@ controller_manager:
     update_rate: 100
 
     canadarm_joint_controller:
-      type: effort_controllers/JointGroupPositionController
+      type: position_controllers/JointGroupPositionController
 
     canadarm_joint_trajectory_controller:
       type: joint_trajectory_controller/JointTrajectoryController
@@ -45,32 +45,3 @@ canadarm_joint_controller:
       - position
       - velocity
       - effort
-    gains:
-      Base_Joint:
-        p: 50.0
-        i: 100.0
-        d: 2000.0
-      Shoulder_Roll:
-        p: 50.0
-        i: 100.0
-        d: 2000.0
-      Shoulder_Yaw:
-        p: 50.0
-        i: 100.0
-        d: 2000.0
-      Elbow_Pitch:
-        p: 50.0
-        i: 100.0
-        d: 2000.0
-      Wrist_Pitch:
-        p: 50.0
-        i: 100.0
-        d: 2000.0
-      Wrist_Yaw:
-        p: 50.0
-        i: 10.0
-        d: 200.0
-      Wrist_Roll:
-        p: 50.0
-        i: 10.0
-        d: 200.0

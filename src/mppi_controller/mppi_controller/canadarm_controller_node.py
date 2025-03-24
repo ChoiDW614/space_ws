@@ -57,7 +57,7 @@ class mppiControllerNode(Node):
 
 
     def target_state_callback(self):
-        self.target_pose.pose = torch.tensor([-2.1649, 4.4368, 18.3509])
+        self.target_pose.pose = torch.tensor([-2.1649, 4.4368, 12.3509])
         self.target_pose.orientation = torch.tensor([0.4630, -0.4653, -0.4581, 0.5994]) # euler angle rpy : -1.43, 0.16, 1.71
         self.controller.set_target_pose(self.target_pose)
     
