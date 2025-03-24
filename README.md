@@ -17,6 +17,26 @@ echo "alias execdocker='cd $SPACE_WS/src/space_robots_gz && ./exec.sh'" >> ~/.ba
 ```
 
 # Installation
+
+Install Docker:   
+https://docs.docker.com/engine/install/ubuntu/
+
+Install Earthly:   
+https://earthly.dev/get-earthly
+
+```
+cd ~/space_ws/src/space_robots_gz/moveit2
+./build.sh
+
+cd ~/space_ws/src/space_robots_gz/space_robots
+./build.sh
+```
+
+run the following to allow GUI passthrough:
+```
+xhost +local:docker
+```
+
 Install the nvidia Toolkit
 
 ```
@@ -40,7 +60,7 @@ sudo docker run --rm --runtime=nvidia --gpus all ubuntu nvidia-smi
 
 ## Changelog
 
-- **2025-03-18**  
+- **2025-03-24**  
   - Porting an mppi controller to a docker container
   - Add an algorithm to update the distribution
 - **2025-03-18**  
