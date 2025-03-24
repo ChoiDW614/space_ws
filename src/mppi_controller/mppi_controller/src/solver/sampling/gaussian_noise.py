@@ -56,8 +56,6 @@ class GaussianSample():
         if self.n_sample != n_sample or not self.fixed_samples:
             self.n_sample = n_sample
 
-        self.logger.info(str(torch.sum(self.scale_tril)))
-
         self.mvn = MultivariateNormal(loc=self.zero_seq, scale_tril=self.scale_tril)
         noise = self.get_samples(n_sample)
 

@@ -2,6 +2,7 @@ import os
 import math
 import yaml
 import time
+from datetime import datetime
 
 import numpy as np
 import torch
@@ -90,7 +91,12 @@ class MPPI():
 
         # Log
         self.cnt = 0
-        self.cost_log = SummaryWriter('runs/experiment_1')
+        log_root = 'src/mppi_controller/mppi_controller/runs'
+        if not os.path.exists(log_root):
+            os.makedirs(log_root)
+
+        log_path = os.path.join(log_root, datetime.now().strftime("%Y%m%d-%H%M%S"))
+        self.cost_log = SummaryWriter(log_path)
 
 
     def compute_control_input(self):

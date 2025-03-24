@@ -108,6 +108,15 @@ RUN sudo apt-get update --fix-missing && sudo apt-get install -y \
   ros-humble-gazebo-dev \
   ros-humble-ros-gz-bridge
 
+RUN pip install torch==2.5.0 \
+                torchvision==0.20.0 \
+                torchaudio==2.5.0 \
+                tensorboard==2.19.0
+
+RUN pip install pin==3.3.1
+
+RUN pip install --upgrade --user setuptools==58.3.0
+
 # Setup the entrypoint
 COPY ./entrypoint.sh /
 ENTRYPOINT ["/entrypoint.sh"]

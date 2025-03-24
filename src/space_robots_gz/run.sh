@@ -12,7 +12,9 @@ IMG_NAME=openrobotics/space_robots_demo
 CONTAINER_NAME="$(tr '/' '_' <<< "$IMG_NAME")"
 
 # Start the container
-docker run --rm -it --name $CONTAINER_NAME  --network host \
+docker run --rm -it --name $CONTAINER_NAME --runtime=nvidia --gpus all --network host \
+    -v /home/user/space_ws/src/mppi_controller:/home/spaceros-user/demos_ws/src/mppi_controller \
+    -v /home/user/space_ws/src/robot_manager:/home/spaceros-user/demos_ws/src/robot_manager \
     -v /home/user/space_ws/src/space_robots_gz/demos:/home/spaceros-user/demos_ws/src/demos \
     -v /home/user/space_ws/src/space_robots_gz/simulation:/home/spaceros-user/demos_ws/src/simulation \
     -e DISPLAY -e TERM -e QT_X11_NO_MITSHM=1 $IMG_NAME
