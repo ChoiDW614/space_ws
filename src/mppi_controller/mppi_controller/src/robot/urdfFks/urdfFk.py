@@ -88,13 +88,13 @@ class URDFForwardKinematics():
             raise LinkNotInURDFError( f"The link {parent_link} is not in the URDF. Valid links: {self.robot.link_names()}")
 
         if parent_link == self._root_link:
-            tf_parent = init_transformation @ torch.eye(4).clone()
+            tf_parent = torch.eye(4).clone()
         else:
             tf_parent = self.robot.forward_kinematics_cpu(q)
             tf_parent = init_transformation @ self._mount_transformation_cpu @ tf_parent
 
         if child_link == self._root_link:
-            tf_child = init_transformation @ torch.eye(4).clone()
+            tf_child = torch.eye(4).clone()
         else:
             tf_child = self.robot.forward_kinematics_cpu(q)
             tf_child = init_transformation @ self._mount_transformation_cpu @ tf_child

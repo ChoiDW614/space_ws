@@ -48,7 +48,7 @@ class mppiControllerNode(Node):
         self.joint_state_subscriber = self.create_subscription(DynamicJointState, '/dynamic_joint_states', self.joint_state_callback, subscribe_qos_profile)
         self.base_state_subscriber = self.create_subscription(TransformStamped, '/model/canadarm/pose', self.model_state_callback, subscribe_qos_profile)
 
-        cal_timer_period = 0.01  # seconds
+        cal_timer_period = 0.1  # seconds
         pub_timer_period = 0.01  # seconds
         self.cal_timer = self.create_timer(cal_timer_period, self.cal_timer_callback)
         self.pub_timer = self.create_timer(pub_timer_period, self.pub_timer_callback)

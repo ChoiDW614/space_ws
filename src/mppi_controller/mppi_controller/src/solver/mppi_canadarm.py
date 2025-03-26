@@ -18,7 +18,7 @@ from ament_index_python.packages import get_package_share_directory
 from mppi_controller.src.solver.sampling.gaussian_noise import GaussianSample
 from mppi_controller.src.robot.urdfFks.urdfFk import URDFForwardKinematics
 from mppi_controller.src.utils.pose import Pose, pose_diff, pos_diff
-from mppi_controller.src.utils.rotation_conversions import matrix_to_quaternion, quaternion_to_matrix, euler_angles_to_matrix, matrix_to_euler_angles, matrix_to_axis_angle
+from mppi_controller.src.utils.rotation_conversions import euler_angles_to_matrix, matrix_to_euler_angles
 
 
 class MPPI():
@@ -109,7 +109,7 @@ class MPPI():
             return self.u_prev
 
         samples = self.sample_gen.get_action(n_sample=self.n_samples, q=self._q, seed=time.time_ns())
-        self.eefTraj = self.fk_canadarm.forward_kinematics(samples, 'EE_SSRMS', self.base_pose.tf_matrix(self.device), 'Base_SSRMS')
+        self.eefTraj = self.fk_canadarm.forward_kinematics(samples, 'EE_SSRMS', self.base_pose.tf_matrix(self.device))
 
         tracking_cost = self.tracking_cost()
         terminal_cost = self.terminal_cost()
@@ -119,7 +119,7 @@ class MPPI():
     
 
     def prev_forward_kinematics(self):
-        self.ee_pose.from_matrix(self.fk_canadarm.forward_kinematics_cpu(self._q[self.n_mobile_dof:], 'EE_SSRMS', self.base_pose.tf_matrix(), 'Base_SSRMS'))
+        self.ee_pose.from_matrix(self.fk_canadarm.forward_kinematics_cpu(self._q[self.n_mobile_dof:], 'EE_SSRMS', self.base_pose.tf_matrix()))
         pose_err = pos_diff(self.ee_pose, self.target_pose)
 
         # self.logger.info("pose: " + str(self.ee_pose.pose))
