@@ -7,9 +7,10 @@ echo "alias cball='cd \${DEMO_DIR} && colcon build --parallel-workers 4 --cmake-
 echo "alias cb='cd \${DEMO_DIR} && colcon build --packages-select canadarm ets_vii simulation --parallel-workers 4 --cmake-args -DCMAKE_BUILD_TYPE=Release'" >> ~/.bashrc
 echo "alias cb2='cd \${DEMO_DIR} && colcon build --packages-select mppi_controller robot_manager --symlink-install --parallel-workers 4 --cmake-args -DCMAKE_BUILD_TYPE=Release'" >> ~/.bashrc
 echo "alias sb='source \${DEMO_DIR}/install/setup.bash'" >> ~/.bashrc
-echo "alias rl='ros2 launch canadarm canadarm.launch.py'" >> ~/.bashrc
-echo "alias rl2='ros2 launch canadarm canadarm2.launch.py'" >> ~/.bashrc
-echo "alias rl3='ros2 launch mars_rover mars_rover.launch.py'" >> ~/.bashrc
+echo "alias rl='ros2 launch canadarm floating_canadarm.launch.py'" >> ~/.bashrc
+echo "alias rl2='ros2 launch canadarm canadarm.launch.py'" >> ~/.bashrc
+echo "alias rl3='ros2 launch canadarm canadarm2.launch.py'" >> ~/.bashrc
+echo "alias rl4='ros2 launch mars_rover mars_rover.launch.py'" >> ~/.bashrc
 echo "alias ctl='ros2 launch robot_manager run_canadarm_control.launch.py'" >> ~/.bashrc
 
 source "/opt/ros/${ROS_DISTRO}/setup.bash"
