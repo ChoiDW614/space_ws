@@ -39,7 +39,7 @@
     </inertial>
   </link>
 
-  <joint name="joint1" type="revolute">
+  <joint name="joint1" type="fixed">
     <axis xyz="0 0 1"/>
     <limit effort="1000.0" lower="-3.0" upper="3.0" velocity="0.5"/>
     <parent link="base_link" />
@@ -65,7 +65,7 @@
     </inertial>
   </link>
 
-  <joint name="joint2" type="revolute">
+  <joint name="joint2" type="fixed">
     <axis xyz="1 0 0"/>
     <limit effort="1000.0" lower="-3.0" upper="3.0" velocity="0.5"/>
     <parent link="link_1" />
@@ -91,7 +91,7 @@
     </inertial>
   </link>
 
-  <joint name="joint3" type="revolute">
+  <joint name="joint3" type="fixed">
     <axis xyz="-1 0 0"/>
     <limit effort="1000.0" lower="-3.0" upper="3.0" velocity="0.5"/>
     <parent link="link_2" />
@@ -117,7 +117,7 @@
     </inertial>
   </link>
 
-   <joint name="joint4" type="revolute">
+   <joint name="joint4" type="fixed">
     <axis xyz="1 0 0"/>
     <limit effort="1000.0" lower="-3.0" upper="3.0" velocity="0.5"/>
     <parent link="link_3" />
@@ -143,7 +143,7 @@
     </inertial>
   </link>
 
-   <joint name="joint5" type="revolute">
+   <joint name="joint5" type="fixed">
     <axis xyz="0 0 1"/>
     <limit effort="1000.0" lower="-3.0" upper="3.0" velocity="0.5"/>
     <parent link="link_4" />
@@ -169,7 +169,7 @@
     </inertial>
   </link>
 
-  <joint name="joint6" type="revolute">
+  <joint name="joint6" type="fixed">
     <axis xyz="1 0 0"/>
     <limit effort="1000.0" lower="-3.0" upper="3.0" velocity="0.5"/>
     <parent link="link_5" />

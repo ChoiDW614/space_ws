@@ -44,14 +44,14 @@ class mppiControllerNode(Node):
         self.joint_state_subscriber = self.create_subscription(DynamicJointState, '/dynamic_joint_states', self.joint_state_callback, subscribe_qos_profile)
         self.base_state_subscriber = self.create_subscription(PoseArray, '/world/default/pose/info', self.base_state_callback, subscribe_qos_profile)
 
-        cal_timer_period = 0.1  # seconds
-        pub_timer_period = 1  # seconds
+        cal_timer_period = 0.01  # seconds
+        pub_timer_period = 0.01  # seconds
         self.cal_timer = self.create_timer(cal_timer_period, self.cal_timer_callback)
         self.pub_timer = self.create_timer(pub_timer_period, self.pub_timer_callback)
 
         # arm publisher
         self.arm_msg = Float64MultiArray()
-        self.arm_publisher = self.create_publisher(Float64MultiArray, '/canadarm_joint_controller/commands', 10)
+        self.arm_publisher = self.create_publisher(Float64MultiArray, '/floating_canadarm_joint_controller/commands', 10)
 
         self.target_state_callback()
 
@@ -64,8 +64,18 @@ class mppiControllerNode(Node):
 
     def cal_timer_callback(self):
         # start_time = time.time()
-        u = self.controller.compute_control_input()
-        self.arm_msg.data = u.tolist()
+        # u = self.controller.compute_control_input()
+        # self.arm_msg.data = u.tolist()
+        self.arm_msg.data = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+        for i in range(0, 13):
+            self.arm_msg.data[i] = 0.0
+
+        self.arm_msg.data[0] = 1.0
+        self.arm_msg.data[1] = 2.0
+        self.arm_msg.data[2] = 5.0
+        # self.arm_msg.data[3] = 3.1.57
+        # self.arm_msg.data[4] = 1.57
+        # self.arm_msg.data[5] = 1.57
         # end_time = time.time()
 
         # self.get_logger().info(str(end_time-start_time))
@@ -84,6 +94,8 @@ class mppiControllerNode(Node):
 
     def base_state_callback(self, msg):
         self.controller.set_base_pose(msg.poses[1].position, msg.poses[1].orientation) # poses[1] -> base pose (ros_gz_bridge)
+        # print("x :" ,msg.pose[1].position.x)
+        self.get_logger().info(f"x: {msg.poses[1].position.x:.3f}, y: {msg.poses[1].position.y:.3f}, z: {msg.poses[1].position.z:.3f}")
 
 
 def main():

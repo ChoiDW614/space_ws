@@ -1,0 +1,61 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 100
+
+    floating_canadarm_joint_controller:
+      type: position_controllers/JointGroupPositionController
+
+
+    canadarm_joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+
+
+floating_canadarm_joint_controller:
+  ros__parameters:
+    joints:
+      - v_x_joint
+      - v_y_joint
+      - v_z_joint
+      - v_r_joint
+      - v_p_joint
+      - v_yaw_joint
+      - Base_Joint
+      - Shoulder_Roll
+      - Shoulder_Yaw
+      - Elbow_Pitch
+      - Wrist_Pitch
+      - Wrist_Yaw
+      - Wrist_Roll
+    command_interfaces:
+      - position 
+    state_interfaces:
+      - position
+      - velocity
+      - effort
+
+    # gains:
+    #   v_x_joint:
+    #     p: 50000.0
+    #     i: 0.0
+    #     d: 10.0
+    #   v_y_joint:
+    #     p: 50000.0
+    #     i: 0.0
+    #     d: 500.0
+    #   v_z_joint:
+    #     p: 50000.0
+    #     i: 0.0
+    #     d: 500.0
+    #   v_r_joint:
+    #     p: 3000.0
+    #     i: 0.0
+    #     d: 300.0
+    #   v_p_joint:
+    #     p: 300.0
+    #     i: 0.0
+    #     d: 100.0
+    #   v_yaw_joint:
+    #     p: 5.0
+    #     i: 0.0
+    #     d: 10.0

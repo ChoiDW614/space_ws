@@ -107,7 +107,6 @@ class MPPI():
             return self.u_prev
 
         samples = self.sample_gen.get_action(n_sample=self.n_samples, q=self._q, seed=time.time_ns())
-
         self.eefTraj = self.fk_canadarm.forward_kinematics(samples, 'EE_SSRMS', self.base_pose.tf_matrix(self.device))
 
         tracking_cost = self.tracking_cost()

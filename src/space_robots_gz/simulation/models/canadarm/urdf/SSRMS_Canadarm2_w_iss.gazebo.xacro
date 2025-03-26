@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <robot xmlns:xacro="http://wiki.ros.org/xacro">
 
-  <xacro:macro name="ssrms_canadarm2_gazebo" params="command_interface:=effort">
+  <xacro:macro name="ssrms_canadarm2_gazebo" params="command_interface:=position">
 
   <ros2_control name="IgnitionSystem" type="system">
       <hardware>
