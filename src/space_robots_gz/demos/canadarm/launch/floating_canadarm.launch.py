@@ -58,10 +58,17 @@ def generate_launch_description():
         output='screen'
     )
 
+    # pose_publisher = ExecuteProcess(
+    #     cmd=[
+    #         'ros2', 'run', 'ros_gz_bridge', 'parameter_bridge',
+    #         '/world/default/pose/info@tf2_msgs/msg/TFMessage@ignition.msgs.Pose_V'
+    #     ],
+    #     shell=False
+    # )
     pose_publisher = ExecuteProcess(
         cmd=[
             'ros2', 'run', 'ros_gz_bridge', 'parameter_bridge',
-            '/world/default/pose/info@geometry_msgs/msg/PoseArray@ignition.msgs.Pose_V'
+            '/model/canadarm/pose@geometry_msgs/msg/TransformStamped@ignition.msgs.Pose'
         ],
         shell=False
     )
@@ -73,22 +80,10 @@ def generate_launch_description():
         output='screen'
     )
 
-    # load_canadarm_joint_controller = ExecuteProcess(
-    #     cmd=['ros2', 'control', 'load_controller', '--set-state', 'active',
-    #          'canadarm_joint_trajectory_controller'],
-    #     output='screen'
-    # )
-
     load_canadarm_joint_controller = ExecuteProcess(
         cmd=['ros2', 'control', 'load_controller', '--set-state', 'active',
              'floating_canadarm_joint_controller'],
         output='screen'
-    )
-
-    ets_vii_target_spawn = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(get_package_share_directory('ets_vii'),
-                'launch/spawn_ets_vii.launch.py')),
-        launch_arguments=[]
     )
 
     return LaunchDescription([
@@ -96,7 +91,6 @@ def generate_launch_description():
         robot_state_publisher,
         pose_publisher,
         spawn,
-        ets_vii_target_spawn,
 
         RegisterEventHandler(
             OnProcessExit(

@@ -8,7 +8,7 @@ from rclpy.qos import ReliabilityPolicy
 from builtin_interfaces.msg import Duration
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from control_msgs.msg import DynamicJointState
-from geometry_msgs.msg import PoseArray
+from geometry_msgs.msg import TransformStamped
 from std_msgs.msg import Float64MultiArray
 
 from gazebo_msgs.srv import SetEntityState
@@ -34,6 +34,10 @@ class mppiControllerNode(Node):
         self.target_pose = Pose()
 
         # joint control states
+        self.joint_order = [
+            "v_x_joint", "v_y_joint", "v_z_joint", "v_r_joint", "v_p_joint", "v_yaw_joint",
+            "Base_Joint", "Shoulder_Roll", "Shoulder_Yaw", "Elbow_Pitch", "Wrist_Pitch", "Wrist_Yaw", "Wrist_Roll"
+        ]
         self.joint_names = None
         self.interface_name = None
         self.interface_values = None
@@ -42,7 +46,7 @@ class mppiControllerNode(Node):
         subscribe_qos_profile = QoSProfile(depth=5, reliability=ReliabilityPolicy.BEST_EFFORT, durability=DurabilityPolicy.VOLATILE)
         
         self.joint_state_subscriber = self.create_subscription(DynamicJointState, '/dynamic_joint_states', self.joint_state_callback, subscribe_qos_profile)
-        self.base_state_subscriber = self.create_subscription(PoseArray, '/world/default/pose/info', self.base_state_callback, subscribe_qos_profile)
+        self.base_state_subscriber = self.create_subscription(TransformStamped, '/model/canadarm/pose', self.model_state_callback, subscribe_qos_profile)
 
         cal_timer_period = 0.01  # seconds
         pub_timer_period = 0.01  # seconds
@@ -64,7 +68,7 @@ class mppiControllerNode(Node):
 
     def cal_timer_callback(self):
         # start_time = time.time()
-        # u = self.controller.compute_control_input()
+        u = self.controller.compute_control_input()
         # self.arm_msg.data = u.tolist()
         self.arm_msg.data = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
         for i in range(0, 13):
@@ -88,16 +92,19 @@ class mppiControllerNode(Node):
     def joint_state_callback(self, msg):
         self.joint_names = msg.joint_names
         self.interface_name = [iv.interface_names for iv in msg.interface_values]
-        self.interface_values = torch.tensor([list(iv.values) for iv in msg.interface_values])
-        self.controller.set_init_joint(self.interface_values)
+        values = [list(iv.values) for iv in msg.interface_values]
+
+        index_map = [self.joint_names.index(joint) for joint in self.joint_order]
+        self.interface_values = torch.tensor([values[i] for i in index_map])
+        self.controller.set_joint(self.interface_values)
 
 
-    def base_state_callback(self, msg):
-        self.controller.set_base_pose(msg.poses[1].position, msg.poses[1].orientation) # poses[1] -> base pose (ros_gz_bridge)
-        # print("x :" ,msg.pose[1].position.x)
-        self.get_logger().info(f"x: {msg.poses[1].position.x:.3f}, y: {msg.poses[1].position.y:.3f}, z: {msg.poses[1].position.z:.3f}")
+    def model_state_callback(self, msg):
+        if msg.child_frame_id == 'canadarm/ISS':
+            self.controller.set_base_pose(msg.transform.translation, msg.transform.rotation)
+            # self.get_logger().info(f"x: {msg.transform.translation.x:.3f}, y: {msg.transform.translation.y:.3f}, z: {msg.transform.translation.z:.3f}")
 
-
+# ISS
 def main():
     rclpy.init()
     node = mppiControllerNode()

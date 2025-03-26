@@ -18,7 +18,7 @@ from ament_index_python.packages import get_package_share_directory
 from mppi_controller.src.solver.sampling.gaussian_noise import GaussianSample
 from mppi_controller.src.robot.urdfFks.urdfFk import URDFForwardKinematics
 from mppi_controller.src.utils.pose import Pose, pose_diff, pos_diff
-from mppi_controller.src.utils.rotation_conversions import matrix_to_quaternion, euler_angles_to_matrix, matrix_to_euler_angles
+from mppi_controller.src.utils.rotation_conversions import matrix_to_quaternion, quaternion_to_matrix, euler_angles_to_matrix, matrix_to_euler_angles, matrix_to_axis_angle
 
 
 class MPPI():
@@ -33,7 +33,9 @@ class MPPI():
         torch.set_default_dtype(torch.float32)
 
         # Sampling parameters
-        self.n_action = 7
+        self.n_action = 13
+        self.n_manipulator_dof = 7
+        self.n_mobile_dof = 6
         self.n_samples = 1024
         self.n_horizen = 32
         self.dt = 0.01
@@ -101,13 +103,13 @@ class MPPI():
 
     def compute_control_input(self):
         pose_err = self.prev_forward_kinematics()
-        self.log(pose_err)
+
         if pose_err < 0.01:
             self.logger.info("target reached!")
             return self.u_prev
 
         samples = self.sample_gen.get_action(n_sample=self.n_samples, q=self._q, seed=time.time_ns())
-        self.eefTraj = self.fk_canadarm.forward_kinematics(samples, 'EE_SSRMS', self.base_pose.tf_matrix(self.device))
+        self.eefTraj = self.fk_canadarm.forward_kinematics(samples, 'EE_SSRMS', self.base_pose.tf_matrix(self.device), 'Base_SSRMS')
 
         tracking_cost = self.tracking_cost()
         terminal_cost = self.terminal_cost()
@@ -117,11 +119,11 @@ class MPPI():
     
 
     def prev_forward_kinematics(self):
-        self.ee_pose.from_matrix(self.fk_canadarm.forward_kinematics_cpu(self._q, 'EE_SSRMS', self.base_pose.tf_matrix()))
+        self.ee_pose.from_matrix(self.fk_canadarm.forward_kinematics_cpu(self._q[self.n_mobile_dof:], 'EE_SSRMS', self.base_pose.tf_matrix(), 'Base_SSRMS'))
         pose_err = pos_diff(self.ee_pose, self.target_pose)
 
         # self.logger.info("pose: " + str(self.ee_pose.pose))
-        self.logger.info("pose err: " + str(round(pose_err.detach().item(), 3)))
+        # self.logger.info("pose err: " + str(round(pose_err.detach().item(), 3)))
         return pose_err
 
     
@@ -194,12 +196,12 @@ class MPPI():
         return
 
 
-    def set_init_joint(self, init_joint_states):
-        init_joint_states = init_joint_states.to(self.device)
+    def set_joint(self, joint_states):
+        joint_states = joint_states.to(self.device)
     
-        self._q = init_joint_states[:, 0]
-        self._qdot = init_joint_states[:, 1]
-        self._qddot = init_joint_states[:, 2]
+        self._q = joint_states[:, 0]
+        self._qdot = joint_states[:, 1]
+        self._qddot = joint_states[:, 2]
         return
 
     def set_ee_pose(self, pos, ori):

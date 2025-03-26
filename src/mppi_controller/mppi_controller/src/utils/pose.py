@@ -47,6 +47,9 @@ class Pose():
 
     def rpy(self):
         return matrix_to_euler_angles(self.__tf, "ZYX")
+    
+    def rpy2(self):
+        return matrix_to_euler_angles(self.__tf, "XYZ")
 
 
 def pose_diff(ppos1: Pose, ppose2: Pose):
