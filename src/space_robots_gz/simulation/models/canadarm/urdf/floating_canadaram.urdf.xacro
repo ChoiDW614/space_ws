@@ -34,7 +34,7 @@ The link CoM locations (with respect to link frame) are set to zero as the inert
     <child link="v_y_link"/>
     <origin rpy="0 0 0" xyz="0.0 0 -0.0"/>
     <axis xyz="1 0 0"/>
-    <limit lower="-10000.0" upper="10000.0" effort="5.0" velocity="5.0"/>
+    <limit lower="-10000.0" upper="10000.0" effort="1000.0" velocity="5.0"/>
   </joint>
   <link name="v_y_link">
     <inertial>
@@ -48,7 +48,7 @@ The link CoM locations (with respect to link frame) are set to zero as the inert
     <child link="v_z_link"/>
     <origin rpy="0 0 0" xyz="0.0 0 -0.0"/>
     <axis xyz="0 1 0"/>
-    <limit lower="-10000.0" upper="10000.0" effort="5.0" velocity="5.0"/>
+    <limit lower="-10000.0" upper="10000.0" effort="1000.0" velocity="5.0"/>
   </joint>
 
   <link name="v_z_link">
@@ -63,7 +63,7 @@ The link CoM locations (with respect to link frame) are set to zero as the inert
     <child link="v_r_link"/>
     <origin rpy="0 0 0" xyz="0.0 0 -0.0"/>
     <axis xyz="0 0 1"/>
-    <limit lower="-10000.0" upper="10000.0" effort="5.0" velocity="5.0"/>
+    <limit lower="-10000.0" upper="10000.0" effort="1000.0" velocity="5.0"/>
   </joint>
 
     <link name="v_r_link">
@@ -78,7 +78,7 @@ The link CoM locations (with respect to link frame) are set to zero as the inert
     <child link="v_p_link"/>
     <origin rpy="0 0 0" xyz="0.0 0 -0.0"/>
     <axis xyz="1 0 0"/>
-    <limit lower="-6.28" upper="6.28" effort="5.0" velocity="5.0"/>
+    <limit lower="-6.28" upper="6.28" effort="1000.0" velocity="5.0"/>
   </joint>
 
     <link name="v_p_link">
@@ -93,7 +93,7 @@ The link CoM locations (with respect to link frame) are set to zero as the inert
     <child link="v_yaw_link"/>
     <origin rpy="0 0 0" xyz="0.0 0 -0.0"/>
     <axis xyz="0 1 0"/>
-    <limit lower="-6.28" upper="6.28" effort="5.0" velocity="5.0"/>
+    <limit lower="-6.28" upper="6.28" effort="1000.0" velocity="5.0"/>
   </joint>
 
     <link name="v_yaw_link">
@@ -108,7 +108,7 @@ The link CoM locations (with respect to link frame) are set to zero as the inert
     <child link="ISS"/>
     <origin rpy="0 0 0" xyz="0.0 0 -0.0"/>
     <axis xyz="0 0 1"/>
-    <limit lower="-6.28" upper="6.28" effort="5.0" velocity="5.0"/>
+    <limit lower="-6.28" upper="6.28" effort="1000.0" velocity="5.0"/>
   </joint>
 
   <link name="ISS">

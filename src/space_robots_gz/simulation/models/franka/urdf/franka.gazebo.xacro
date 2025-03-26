@@ -5,7 +5,7 @@
 
   <ros2_control name="FrankaSystem" type="system">
       <hardware>
-          <plugin>ign_ros2_control/FrankaSystem</plugin>
+          <plugin>ign_ros2_control/IgnitionSystem</plugin>
       </hardware>
       <joint name="panda_joint1">
           <command_interface name="${command_interface}"/>

@@ -95,7 +95,7 @@
       <plugin filename="libign_ros2_control-system" name="ign_ros2_control::IgnitionROS2ControlPlugin">
       <robot_param>robot_description</robot_param>
       <robot_param_node>robot_state_publisher</robot_param_node>
-      <parameters>$(find canadarm)/config/floating_canadaram_control.yaml</parameters>
+      <parameters>$(find canadarm)/config/floating_canadarm_control.yaml</parameters>
       </plugin>
   </gazebo>
 
