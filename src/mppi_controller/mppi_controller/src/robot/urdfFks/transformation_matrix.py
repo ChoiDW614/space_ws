@@ -38,19 +38,19 @@ def make_transform_matrix(xyz, rpy):
 def prismatic_transform(xyz, rpy, axis, q):
     tf_origin = make_transform_matrix(xyz, rpy).to(device=q.device)
 
-    n_sample, n_timestep = q.size()
+    n_sample, n_horizen = q.size()
 
     if torch.linalg.norm(axis) < 1e-12:
-        axis = tensor([1.0, 0.0, 0.0])
+        axis = tensor([1.0, 0.0, 0.0], device=q.device)
     else:
         axis = axis / torch.linalg.norm(axis)
 
-    tf_slide = torch.eye(4, device=q.device).expand(n_sample, n_timestep, 4, 4).clone()
+    tf_slide = torch.eye(4, device=q.device).expand(n_sample, n_horizen, 4, 4).clone()
     tf_slide[..., :3, 3] = axis.view(1, 1, 3) * q.unsqueeze(-1)
 
     if tf_origin.ndim == 2:
         tf_origin = tf_origin.unsqueeze(0).unsqueeze(0)  # (1, 1, 4, 4)
-        tf_origin = tf_origin.expand(n_sample, n_timestep, 4, 4)
+        tf_origin = tf_origin.expand(n_sample, n_horizen, 4, 4)
 
     return tf_origin @ tf_slide
 
@@ -58,10 +58,10 @@ def prismatic_transform(xyz, rpy, axis, q):
 def revolute_transform(xyz, rpy, axis, q):
     tf_origin = make_transform_matrix(xyz, rpy).to(device=q.device)
 
-    n_sample, n_timestep = q.size()
+    n_sample, n_horizen = q.size()
 
     if torch.linalg.norm(axis) < 1e-12:
-        axis = tensor([1.0, 0.0, 0.0])
+        axis = tensor([1.0, 0.0, 0.0], device=q.device)
     else:
         axis = axis / torch.linalg.norm(axis)
 
@@ -89,7 +89,7 @@ def revolute_transform(xyz, rpy, axis, q):
         torch.stack([R20, R21, R22], dim=-1)
     ], dim=-2)
 
-    tf_rot = eye(4, device=q.device).expand(n_sample, n_timestep, 4, 4).clone()
+    tf_rot = eye(4, device=q.device).expand(n_sample, n_horizen, 4, 4).clone()
     tf_rot[..., :3, :3] = R
 
     return tf_origin @ tf_rot
@@ -144,3 +144,82 @@ def revolute_transform_cpu(xyz, rpy, axis, q):
 
     return tf_origin @ tf_rot
 
+
+def transformation_matrix_from_xyzrpy(q):
+    n_sample, n_horizen, n_action = q.size()
+
+    T = torch.eye(4, device=q.device).expand(n_sample, n_horizen, 4, 4).clone()
+    T[:, :, 0, 3] = q[:, :, 0]
+    T[:, :, 1, 3] = q[:, :, 1]
+    T[:, :, 2, 3] = q[:, :, 2]
+
+    roll = q[:, :, 3]
+    pitch = q[:, :, 4]
+    yaw = q[:, :, 5]
+
+    cr = torch.cos(roll)
+    sr = torch.sin(roll)
+    cp = torch.cos(pitch)
+    sp = torch.sin(pitch)
+    cy = torch.cos(yaw)
+    sy = torch.sin(yaw)
+
+    r00 = cy * cp
+    r01 = cy * sp * sr - sy * cr
+    r02 = cy * sp * cr + sy * sr
+
+    r10 = sy * cp
+    r11 = sy * sp * sr + cy * cr
+    r12 = sy * sp * cr - cy * sr
+
+    r20 = -sp
+    r21 = cp * sr
+    r22 = cp * cr
+
+    R = torch.stack([
+         torch.stack([r00, r01, r02], dim=-1),
+         torch.stack([r10, r11, r12], dim=-1),
+         torch.stack([r20, r21, r22], dim=-1)
+    ], dim=-2)
+
+    T[:, :, :3, :3] = R
+
+    return T
+
+
+def transformation_matrix_from_xyzrpy_cpu(q):
+    T = torch.eye(4).clone()
+    T[0, 3] = q[0]
+    T[1, 3] = q[1]
+    T[2, 3] = q[2]
+
+    roll = q[3]
+    pitch = q[4]
+    yaw = q[5]
+
+    cr = torch.cos(roll)
+    sr = torch.sin(roll)
+    cp = torch.cos(pitch)
+    sp = torch.sin(pitch)
+    cy = torch.cos(yaw)
+    sy = torch.sin(yaw)
+
+    R00 = cy * cp
+    R01 = cy * sp * sr - sy * cr
+    R02 = cy * sp * cr + sy * sr
+
+    R10 = sy * cp
+    R11 = sy * sp * sr + cy * cr
+    R12 = sy * sp * cr - cy * sr
+
+    R20 = -sp
+    R21 = cp * sr
+    R22 = cp * cr
+
+    R = tensor([[R00, R01, R02],
+                [R10, R11, R12],
+                [R20, R21, R22]])
+
+    T[:3, :3] = R
+
+    return T

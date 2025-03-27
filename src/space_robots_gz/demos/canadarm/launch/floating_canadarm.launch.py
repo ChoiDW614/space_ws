@@ -26,7 +26,7 @@ def generate_launch_description():
            ':'.join([environ.get('IGN_GAZEBO_RESOURCE_PATH', default=''), canadarm_demos_path])}
 
 
-    urdf_model_path = os.path.join(simulation_models_path, 'models', 'canadarm', 'urdf', 'floating_canadaram.urdf.xacro')
+    urdf_model_path = os.path.join(simulation_models_path, 'models', 'canadarm', 'urdf', 'floating_canadarm.urdf.xacro')
     leo_model = os.path.join(canadarm_demos_path, 'worlds', 'simple_wo_iss.world')
 
     doc = xacro.process_file(urdf_model_path)
@@ -58,13 +58,6 @@ def generate_launch_description():
         output='screen'
     )
 
-    # pose_publisher = ExecuteProcess(
-    #     cmd=[
-    #         'ros2', 'run', 'ros_gz_bridge', 'parameter_bridge',
-    #         '/world/default/pose/info@tf2_msgs/msg/TFMessage@ignition.msgs.Pose_V'
-    #     ],
-    #     shell=False
-    # )
     pose_publisher = ExecuteProcess(
         cmd=[
             'ros2', 'run', 'ros_gz_bridge', 'parameter_bridge',
@@ -86,11 +79,19 @@ def generate_launch_description():
         output='screen'
     )
 
+    # Target spawn
+    ets_vii_target_spawn = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(get_package_share_directory('ets_vii'),
+                'launch/spawn_ets_vii.launch.py')),
+        launch_arguments=[]
+    )
+
     return LaunchDescription([
         start_world,
         robot_state_publisher,
         pose_publisher,
         spawn,
+        ets_vii_target_spawn,
 
         RegisterEventHandler(
             OnProcessExit(

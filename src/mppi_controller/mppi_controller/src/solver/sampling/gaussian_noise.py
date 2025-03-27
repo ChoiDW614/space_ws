@@ -66,8 +66,9 @@ class GaussianSample():
         # noise = torch.matmul(noise, self.scale_tril).view(self.n_sample, self.n_horizon, self.n_action)
         
         act_seq = q.unsqueeze(0) + noise
+        act_seq[:,:,0:6] = act_seq[:,:,0:6] * 0.05
 
-        act_seq = self.scale_act(act_seq, self.action_min, self.action_max)
+        # act_seq = self.scale_act(act_seq, self.action_min, self.action_max)
         return act_seq
     
     def update_distribution(self, weight, action):

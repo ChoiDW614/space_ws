@@ -15,12 +15,10 @@ import xacro
 
 def generate_launch_description():
     simulation_models_path = get_package_share_directory('simulation')
-
     ets_vii_urdf_model_path = os.path.join(simulation_models_path, 'models', 'ets_vii', 'urdf', 'ets_vii.urdf.xacro')
 
     ets_vii_doc = xacro.process_file(ets_vii_urdf_model_path)
     ets_vii_robot_description = {'robot_description': ets_vii_doc.toxml()}
-
 
     robot_state_publisher = Node(
         package='robot_state_publisher',
@@ -43,33 +41,16 @@ def generate_launch_description():
         output='screen'
     )
 
-    # Control
-    # load_ets_vii_joint_state_broadcaster = ExecuteProcess(
-    #     cmd=['ros2', 'control', 'load_controller', '--set-state', 'active',
-    #          'ets_vii_joint_state_broadcaster'],
-    #     output='screen'
-    # )
-
-    # load_ets_vii_joint_controller = ExecuteProcess(
-    #     cmd=['ros2', 'control', 'load_controller', '--set-state', 'active',
-    #          'ets_vii_joint_controller'],
-    #     output='screen'
-    # )
+    pose_publisher = ExecuteProcess(
+        cmd=[
+            'ros2', 'run', 'ros_gz_bridge', 'parameter_bridge',
+            '/model/ets_vii/pose@geometry_msgs/msg/TransformStamped@ignition.msgs.Pose'
+        ],
+        shell=False
+    )
 
     return LaunchDescription([
         robot_state_publisher,
         spawn,
-
-        # RegisterEventHandler(
-        #     OnProcessExit(
-        #         target_action=spawn,
-        #         on_exit=[load_ets_vii_joint_state_broadcaster],
-        #     )
-        # ),
-        # RegisterEventHandler(
-        #     OnProcessExit(
-        #         target_action=load_ets_vii_joint_state_broadcaster,
-        #         on_exit=[load_ets_vii_joint_controller],
-        #     )
-        # ),
+        pose_publisher,
     ])

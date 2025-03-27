@@ -28,16 +28,18 @@ class URDFForwardKinematics():
         self._mount_transformation_cpu = mount_transformation.cpu()
 
 
-    def set_samples_and_timesteps(self, n_samples, n_timesteps):
+    def set_samples_and_timesteps(self, n_samples, n_timesteps, n_mobile_dof = 0):
         self.robot._n_samples = n_samples
         self.robot._n_timestep = n_timesteps
-        
+        self.robot._n_mobile_dof = n_mobile_dof
+
 
     def forward_kinematics(self,
         q: torch.Tensor,
         child_link: str,
+        parent_link: Union[str, None] = None,
         init_transformation: torch.Tensor = None,
-        parent_link: Union[str, None] = None
+        base_movement: bool = False,
     ) -> torch.Tensor:
         
         if init_transformation is None:
@@ -52,15 +54,15 @@ class URDFForwardKinematics():
             raise LinkNotInURDFError( f"The link {parent_link} is not in the URDF. Valid links: {self.robot.link_names()}")
 
         if parent_link == self._root_link:
-            tf_parent = init_transformation @ torch.eye(4, device=q.device).expand(self.robot._n_samples, self.robot._n_timestep, 4, 4).clone()
+            tf_parent = torch.eye(4, device=q.device).expand(self.robot._n_samples, self.robot._n_timestep, 4, 4).clone()
         else:
-            tf_parent = self.robot.forward_kinematics(q)
+            tf_parent = self.robot.forward_kinematics(q, base_movement)
             tf_parent = init_transformation @ self._mount_transformation @ tf_parent
 
         if child_link == self._root_link:
-            tf_child = init_transformation @ torch.eye(4, device=q.device).expand(self.robot._n_samples, self.robot._n_timestep, 4, 4).clone()
+            tf_child = torch.eye(4, device=q.device).expand(self.robot._n_samples, self.robot._n_timestep, 4, 4).clone()
         else:
-            tf_child = self.robot.forward_kinematics(q)
+            tf_child = self.robot.forward_kinematics(q, base_movement)
             tf_child = init_transformation @ self._mount_transformation @ tf_child
 
         tf_parent_inv = torch.linalg.inv(tf_parent)
@@ -72,8 +74,9 @@ class URDFForwardKinematics():
     def forward_kinematics_cpu(self,
         q: torch.Tensor,
         child_link: str,
+        parent_link: Union[str, None] = None,
         init_transformation: torch.Tensor = None,
-        parent_link: Union[str, None] = None
+        base_movement: bool = False,
     ) -> torch.Tensor:
 
         if init_transformation is None:
@@ -90,13 +93,13 @@ class URDFForwardKinematics():
         if parent_link == self._root_link:
             tf_parent = torch.eye(4).clone()
         else:
-            tf_parent = self.robot.forward_kinematics_cpu(q)
+            tf_parent = self.robot.forward_kinematics_cpu(q, base_movement)
             tf_parent = init_transformation @ self._mount_transformation_cpu @ tf_parent
 
         if child_link == self._root_link:
             tf_child = torch.eye(4).clone()
         else:
-            tf_child = self.robot.forward_kinematics_cpu(q)
+            tf_child = self.robot.forward_kinematics_cpu(q, base_movement)
             tf_child = init_transformation @ self._mount_transformation_cpu @ tf_child
 
         tf_parent_inv = torch.linalg.inv(tf_parent)

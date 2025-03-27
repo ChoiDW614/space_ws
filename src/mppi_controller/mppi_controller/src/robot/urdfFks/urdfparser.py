@@ -32,6 +32,7 @@ class URDFparser(object):
         self._tf_fk = torch.eye(4)
         self._n_samples = 1
         self._n_timestep = 1
+        self._n_mobile_dof = 0
 
     def degrees_of_freedom(self):
         return self._degrees_of_freedom
@@ -117,11 +118,16 @@ class URDFparser(object):
                     joint_list.append(jnt)
         return joint_list
     
-    def forward_kinematics(self, q: torch.Tensor):
+    def forward_kinematics(self, q: torch.Tensor, base_movement: bool = False):
         if self.robot_desc is None:
             raise ValueError("Robot description not loaded.") 
 
         tf_fk = self._tf_fk.expand(self._n_samples, self._n_timestep, 4, 4).to(device=q.device).clone()
+
+        if base_movement:
+            tf_base = transformation_matrix_from_xyzrpy(q=q[:,:,:self._n_mobile_dof])
+            tf_fk = tf_fk @ tf_base
+            q = q[:,:,self._n_mobile_dof:]
 
         for jt in self._joint_chain_list:
             jtype = jt.type
@@ -130,9 +136,9 @@ class URDFparser(object):
             rpy = torch.tensor(jt.origin.rpy)
 
             if jt.axis is None:
-                axis = torch.tensor([1.0, 0.0, 0.0])
+                axis = torch.tensor([1.0, 0.0, 0.0], device=q.device)
             else:
-                axis = torch.tensor(jt.axis)
+                axis = torch.tensor(jt.axis, device=q.device)
 
             if jt.name in self._joint_map:
                 q_idx = self._joint_map[jt.name]
@@ -155,11 +161,17 @@ class URDFparser(object):
 
         return tf_fk
 
-    def forward_kinematics_cpu(self, q: torch.Tensor):
+
+    def forward_kinematics_cpu(self, q: torch.Tensor, base_movement: bool = False):
         if self.robot_desc is None:
             raise ValueError("Robot description not loaded.") 
 
         tf_fk = self._tf_fk.clone()
+
+        if base_movement:
+            tf_base = transformation_matrix_from_xyzrpy_cpu(q=q[:self._n_mobile_dof])
+            tf_fk = tf_fk @ tf_base
+            q = q[self._n_mobile_dof:]
 
         for jt in self._joint_chain_list:
             jtype = jt.type

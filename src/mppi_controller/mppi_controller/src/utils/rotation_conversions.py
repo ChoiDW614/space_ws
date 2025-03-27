@@ -53,7 +53,8 @@ def quaternion_to_matrix(quaternions: torch.Tensor) -> torch.Tensor:
     Returns:
         Rotation matrices as tensor of shape (..., 3, 3).
     """
-    r, i, j, k = torch.unbind(quaternions, -1)
+    # r, i, j, k = torch.unbind(quaternions, -1)
+    i, j, k, r = torch.unbind(quaternions, -1)
     # pyre-fixme[58]: `/` is not supported for operand types `float` and `Tensor`.
     two_s = 2.0 / (quaternions * quaternions).sum(-1)
 
@@ -165,6 +166,8 @@ def matrix_to_quaternion(matrix: torch.Tensor) -> torch.Tensor:
     out = quat_candidates[
         F.one_hot(q_abs.argmax(dim=-1), num_classes=4) > 0.5, :
     ].reshape(batch_dim + (4,))
+
+    out = out[..., [1, 2, 3, 0]]
     return standardize_quaternion(out)
 
 
@@ -333,6 +336,7 @@ def random_quaternions(
     o = torch.randn((n, 4), dtype=dtype, device=device)
     s = (o * o).sum(1)
     o = o / _copysign(torch.sqrt(s), o[:, 0])[:, None]
+    o = o[..., [1, 2, 3, 0]]
     return o
 
 
@@ -399,8 +403,8 @@ def quaternion_raw_multiply(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     Returns:
         The product of a and b, a tensor of quaternions shape (..., 4).
     """
-    aw, ax, ay, az = torch.unbind(a, -1)
-    bw, bx, by, bz = torch.unbind(b, -1)
+    ax, ay, az, aw = torch.unbind(a, -1)
+    bx, by, bz, bw = torch.unbind(b, -1)
     ow = aw * bw - ax * bx - ay * by - az * bz
     ox = aw * bx + ax * bw + ay * bz - az * by
     oy = aw * by - ax * bz + ay * bw + az * bx
@@ -438,7 +442,7 @@ def quaternion_invert(quaternion: torch.Tensor) -> torch.Tensor:
         The inverse, a tensor of quaternions of shape (..., 4).
     """
 
-    scaling = torch.tensor([1, -1, -1, -1], device=quaternion.device)
+    scaling = torch.tensor([-1, -1, -1, 1], device=quaternion.device)
     return quaternion * scaling
 
 
@@ -579,7 +583,7 @@ def axis_angle_to_quaternion(axis_angle: torch.Tensor) -> torch.Tensor:
     angles = torch.norm(axis_angle, p=2, dim=-1, keepdim=True)
     sin_half_angles_over_angles = 0.5 * torch.sinc(angles * 0.5 / torch.pi)
     return torch.cat(
-        [torch.cos(angles * 0.5), axis_angle * sin_half_angles_over_angles], dim=-1
+        [axis_angle * sin_half_angles_over_angles, torch.cos(angles * 0.5)], dim=-1
     )
 
 
@@ -597,8 +601,8 @@ def quaternion_to_axis_angle(quaternions: torch.Tensor) -> torch.Tensor:
             turned anticlockwise in radians around the vector's
             direction.
     """
-    norms = torch.norm(quaternions[..., 1:], p=2, dim=-1, keepdim=True)
-    half_angles = torch.atan2(norms, quaternions[..., :1])
+    norms = torch.norm(quaternions[..., :3], p=2, dim=-1, keepdim=True)
+    half_angles = torch.atan2(norms, quaternions[..., 3:])
     sin_half_angles_over_angles = 0.5 * torch.sinc(half_angles / torch.pi)
     # angles/2 are between [-pi/2, pi/2], thus sin_half_angles_over_angles
     # can't be zero

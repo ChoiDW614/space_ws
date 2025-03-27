@@ -47,9 +47,10 @@ class mppiControllerNode(Node):
         
         self.joint_state_subscriber = self.create_subscription(DynamicJointState, '/dynamic_joint_states', self.joint_state_callback, subscribe_qos_profile)
         self.base_state_subscriber = self.create_subscription(TransformStamped, '/model/canadarm/pose', self.model_state_callback, subscribe_qos_profile)
+        self.target_state_subscriber = self.create_subscription(TransformStamped, '/model/ets_vii/pose', self.target_state_callback, subscribe_qos_profile)
 
         cal_timer_period = 0.1  # seconds
-        pub_timer_period = 0.01  # seconds
+        pub_timer_period = 1  # seconds
         self.cal_timer = self.create_timer(cal_timer_period, self.cal_timer_callback)
         self.pub_timer = self.create_timer(pub_timer_period, self.pub_timer_callback)
 
@@ -57,36 +58,31 @@ class mppiControllerNode(Node):
         self.arm_msg = Float64MultiArray()
         self.arm_publisher = self.create_publisher(Float64MultiArray, '/floating_canadarm_joint_controller/commands', 10)
 
-        self.target_state_callback()
 
-
-    def target_state_callback(self):
-        self.target_pose.pose = torch.tensor([-2.1649, 4.4368, 12.3509])
-        self.target_pose.orientation = torch.tensor([0.4630, -0.4653, -0.4581, 0.5994]) # euler angle rpy : -1.43, 0.16, 1.71
-        self.controller.set_target_pose(self.target_pose)
+    def target_state_callback(self, msg):
+        if msg.child_frame_id == 'ets_vii':
+            self.controller.set_target_pose(msg.transform.translation, msg.transform.rotation)
     
 
     def cal_timer_callback(self):
         # start_time = time.time()
         u = self.controller.compute_control_input()
-        # self.arm_msg.data = u.tolist()
-        self.arm_msg.data = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-        for i in range(0, 13):
-            self.arm_msg.data[i] = 0.0
+        self.arm_msg.data = u.tolist()
+        # self.arm_msg.data = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+        # for i in range(0, 13):
+        #     self.arm_msg.data[i] = 0.0
 
-        self.arm_msg.data[0] = 1.0
-        self.arm_msg.data[1] = 2.0
-        self.arm_msg.data[2] = 5.0
-        # self.arm_msg.data[3] = 3.1.57
-        # self.arm_msg.data[4] = 1.57
-        # self.arm_msg.data[5] = 1.57
+        # self.arm_msg.data[0] = 1.0
+        # self.arm_msg.data[1] = 2.0
+        # self.arm_msg.data[2] = 5.0
+        # self.arm_msg.data[3] = 1.0
         # end_time = time.time()
-
         # self.get_logger().info(str(end_time-start_time))
 
 
     def pub_timer_callback(self):
         self.arm_publisher.publish(self.arm_msg)
+        return
 
 
     def joint_state_callback(self, msg):

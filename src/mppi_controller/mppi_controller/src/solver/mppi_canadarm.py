@@ -20,7 +20,7 @@ from mppi_controller.src.robot.urdfFks.urdfFk import URDFForwardKinematics
 from mppi_controller.src.utils.pose import Pose, pose_diff, pos_diff
 from mppi_controller.src.utils.rotation_conversions import euler_angles_to_matrix, matrix_to_euler_angles
 
-
+from mppi_controller.src.robot.urdfFks.transformation_matrix import transformation_matrix_from_xyzrpy_cpu
 class MPPI():
     def __init__(self):
         self.logger = get_logger("MPPI")
@@ -80,7 +80,7 @@ class MPPI():
 
         # Import URDF for forward kinematics
         package_name = "mppi_controller"
-        urdf_file_path = os.path.join(get_package_share_directory(package_name), "models", "canadarm", "Canadarm2_w_iss.urdf")
+        urdf_file_path = os.path.join(get_package_share_directory(package_name), "models", "canadarm", "floating_canadarm.urdf")
 
         self.fk_canadarm = URDFForwardKinematics(urdf_file_path, root_link='Base_SSRMS', end_links = 'EE_SSRMS')
 
@@ -89,7 +89,7 @@ class MPPI():
         mount_tf[0:3, 3] = torch.tensor([0.0, 0.0, 3.6])
 
         self.fk_canadarm.set_mount_transformation(mount_tf)
-        self.fk_canadarm.set_samples_and_timesteps(self.n_samples, self.n_horizen)
+        self.fk_canadarm.set_samples_and_timesteps(self.n_samples, self.n_horizen, self.n_mobile_dof)
 
         # Log
         self.cnt = 0
@@ -109,7 +109,7 @@ class MPPI():
             return self.u_prev
 
         samples = self.sample_gen.get_action(n_sample=self.n_samples, q=self._q, seed=time.time_ns())
-        self.eefTraj = self.fk_canadarm.forward_kinematics(samples, 'EE_SSRMS', self.base_pose.tf_matrix(self.device))
+        self.eefTraj = self.fk_canadarm.forward_kinematics(samples, 'EE_SSRMS', 'Base_SSRMS', self.base_pose.tf_matrix(self.device), base_movement=True)
 
         tracking_cost = self.tracking_cost()
         terminal_cost = self.terminal_cost()
@@ -119,10 +119,12 @@ class MPPI():
     
 
     def prev_forward_kinematics(self):
-        self.ee_pose.from_matrix(self.fk_canadarm.forward_kinematics_cpu(self._q[self.n_mobile_dof:], 'EE_SSRMS', self.base_pose.tf_matrix()))
+        tf_base = transformation_matrix_from_xyzrpy_cpu(q=self._q)
+
+        self.ee_pose.from_matrix(self.fk_canadarm.forward_kinematics_cpu(self._q[self.n_mobile_dof:], 'EE_SSRMS', 'Base_SSRMS', self.base_pose.tf_matrix(), base_movement=False))
         pose_err = pos_diff(self.ee_pose, self.target_pose)
 
-        # self.logger.info("pose: " + str(self.ee_pose.pose))
+        # self.logger.info("pose2: " + str(self.ee_pose.pose))
         # self.logger.info("pose err: " + str(round(pose_err.detach().item(), 3)))
         return pose_err
 
@@ -217,9 +219,4 @@ class MPPI():
     def set_target_pose(self, pos, ori):
         self.target_pose.pose = pos
         self.target_pose.orientation = ori
-        return
-    
-    def set_target_pose(self, pose: Pose):
-        self.target_pose.pose = pose.pose
-        self.target_pose.orientation = pose.orientation
         return
