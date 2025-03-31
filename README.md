@@ -60,7 +60,7 @@ sudo docker run --rm --runtime=nvidia --gpus all ubuntu nvidia-smi
 
 ## Changelog
 
-- **2025-03-24**  
+- **2025-03-31**  
   - Apply a Kalman filter to a target pose
   - Mounting the camera on CANADARM's end effector and connecting the image to ROS2
   - Assigning initial velocity to target satellite for tumblig task
