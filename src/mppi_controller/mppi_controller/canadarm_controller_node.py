@@ -39,12 +39,13 @@ class mppiControllerNode(Node):
         self.docking_interface_time_prev = Time()
 
         self.init_docking_interface_pose = Pose()
-        self.init_docking_interface_pose.pose = torch.tensor([-2.1649, 4.4368, 8.3509])
+        self.init_docking_interface_pose.pose = torch.tensor([-2.1649, 4.4368, 5.3509])
         self.init_docking_interface_pose.orientation = torch.tensor([-0.4744, -0.4535,  0.6023,  0.4544])
         self.controller.predict_target_pose.set_init_pose(self.docking_interface_pose)
         
-        # self.bridge = CvBridge()
+        # camera images
         self.hand_eye_image = None
+        self.base_image = None
 
         # joint control states
         self.joint_order = [
@@ -61,7 +62,8 @@ class mppiControllerNode(Node):
         self.joint_state_subscriber = self.create_subscription(DynamicJointState, '/dynamic_joint_states', self.joint_state_callback, subscribe_qos_profile)
         self.base_state_subscriber = self.create_subscription(TransformStamped, '/model/canadarm/pose', self.model_state_callback, subscribe_qos_profile)
         self.target_state_subscriber = self.create_subscription(TransformStamped, '/model/ets_vii/pose', self.target_state_callback, subscribe_qos_profile)
-        self.hand_eye_camera_subscriber = self.create_subscription(Image, '/SSRMS_camera/image_raw', self.hand_eye_image_callback, subscribe_qos_profile)
+        self.hand_eye_camera_subscriber = self.create_subscription(Image, '/SSRMS_camera/ee/image_raw', self.hand_eye_image_callback, subscribe_qos_profile)
+        self.base_camera_subscriber = self.create_subscription(Image, '/SSRMS_camera/base/image_raw', self.base_image_callback, subscribe_qos_profile)
 
         # publisher
         cal_timer_period = 0.1  # seconds
@@ -137,6 +139,11 @@ class mppiControllerNode(Node):
 
     def hand_eye_image_callback(self, msg):
         self.hand_eye_image = ros_to_cv2(msg)
+        return
+
+
+    def base_image_callback(self, msg):
+        self.base_image = ros_to_cv2(msg)
         return
 
 

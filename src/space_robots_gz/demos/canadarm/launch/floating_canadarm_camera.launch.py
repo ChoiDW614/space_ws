@@ -26,7 +26,7 @@ def generate_launch_description():
 
 
     urdf_model_path = os.path.join(simulation_models_path, 'models', 'canadarm', 'urdf', 'floating_canadarm_camera.urdf.xacro')
-    leo_model = os.path.join(canadarm_demos_path, 'worlds', 'simple_wo_iss.world')
+    leo_model = os.path.join(canadarm_demos_path, 'worlds', 'simple_wo_iss_display.world')
 
     doc = xacro.process_file(urdf_model_path)
     robot_description = {'robot_description': doc.toxml()}
@@ -66,7 +66,7 @@ def generate_launch_description():
     image_bridge = Node(
         package='ros_gz_image',
         executable='image_bridge',
-        arguments=['/SSRMS_camera/image_raw'],
+        arguments=['/SSRMS_camera/ee/image_raw', '/SSRMS_camera/base/image_raw'],
         output='screen'
     )
 

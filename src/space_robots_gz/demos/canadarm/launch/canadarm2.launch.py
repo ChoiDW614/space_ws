@@ -82,8 +82,6 @@ def generate_launch_description():
         output='screen'
     )
 
-
-
     return LaunchDescription([
         start_world,
         robot_state_publisher,

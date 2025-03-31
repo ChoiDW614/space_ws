@@ -129,7 +129,34 @@
               </noise>
           </camera>
           <always_on>1</always_on>
-          <topic>/SSRMS_camera/image_raw</topic>
+          <topic>/SSRMS_camera/ee/image_raw</topic>
+      </sensor>
+  </gazebo>
+
+  <gazebo reference="base_camera_link">
+      <sensor type="camera" name="camera_sensor">
+          <visualize>1</visualize>
+          <update_rate>10.0</update_rate>
+          <camera>
+              <pose>1.0 0 0 0 0 -1.57</pose>
+              <!-- <horizontal_fov>1.3962634</horizontal_fov> -->
+              <horizontal_fov>1.7</horizontal_fov>
+              <image>
+                  <width>800</width>
+                  <height>800</height>
+                  <format>R8G8B8</format>
+              </image>
+              <clip>
+              <near>0.01</near>
+              <far>100</far>
+              </clip>
+              <noise>
+              <type>gaussian</type>
+              <stddev>0.007</stddev>
+              </noise>
+          </camera>
+          <always_on>1</always_on>
+          <topic>/SSRMS_camera/base/image_raw</topic>
       </sensor>
   </gazebo>
 
