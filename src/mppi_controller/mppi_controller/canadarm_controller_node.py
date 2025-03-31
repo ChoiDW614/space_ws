@@ -5,22 +5,24 @@ from rclpy.qos import QoSProfile
 from rclpy.qos import DurabilityPolicy
 from rclpy.qos import ReliabilityPolicy
 
-from builtin_interfaces.msg import Duration
-from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from control_msgs.msg import DynamicJointState
 from geometry_msgs.msg import TransformStamped
 from std_msgs.msg import Float64MultiArray
+from sensor_msgs.msg import Image
 
 from gazebo_msgs.srv import SetEntityState
 from std_srvs.srv import Empty
 
-import time
 import numpy as np
 import torch
+
+import cv2
 
 from mppi_controller.src.solver.mppi_canadarm import MPPI
 from mppi_controller.src.robot.canadarm_wrapper import CanadarmWrapper
 from mppi_controller.src.utils.pose import Pose
+from mppi_controller.src.utils.time import Time
+from mppi_controller.src.utils.image_pipeline import ros_to_cv2
 
 
 class mppiControllerNode(Node):
@@ -28,10 +30,21 @@ class mppiControllerNode(Node):
         super().__init__("mppi_controller_node")
 
         # self.canadarmWrapper = CanadarmWrapper()
-
         self.controller = MPPI()
 
-        self.target_pose = Pose()
+        # target states
+        self.docking_interface_pose = Pose()
+        self.docking_interface_pose_prev = Pose()
+        self.docking_interface_time = Time()
+        self.docking_interface_time_prev = Time()
+
+        self.init_docking_interface_pose = Pose()
+        self.init_docking_interface_pose.pose = torch.tensor([-2.1649, 4.4368, 8.3509])
+        self.init_docking_interface_pose.orientation = torch.tensor([-0.4744, -0.4535,  0.6023,  0.4544])
+        self.controller.predict_target_pose.set_init_pose(self.docking_interface_pose)
+        
+        # self.bridge = CvBridge()
+        self.hand_eye_image = None
 
         # joint control states
         self.joint_order = [
@@ -48,21 +61,40 @@ class mppiControllerNode(Node):
         self.joint_state_subscriber = self.create_subscription(DynamicJointState, '/dynamic_joint_states', self.joint_state_callback, subscribe_qos_profile)
         self.base_state_subscriber = self.create_subscription(TransformStamped, '/model/canadarm/pose', self.model_state_callback, subscribe_qos_profile)
         self.target_state_subscriber = self.create_subscription(TransformStamped, '/model/ets_vii/pose', self.target_state_callback, subscribe_qos_profile)
+        self.hand_eye_camera_subscriber = self.create_subscription(Image, '/SSRMS_camera/image_raw', self.hand_eye_image_callback, subscribe_qos_profile)
 
+        # publisher
         cal_timer_period = 0.1  # seconds
         pub_timer_period = 1  # seconds
         self.cal_timer = self.create_timer(cal_timer_period, self.cal_timer_callback)
         self.pub_timer = self.create_timer(pub_timer_period, self.pub_timer_callback)
 
-        # arm publisher
         self.arm_msg = Float64MultiArray()
         self.arm_publisher = self.create_publisher(Float64MultiArray, '/floating_canadarm_joint_controller/commands', 10)
 
 
     def target_state_callback(self, msg):
         if msg.child_frame_id == 'ets_vii':
-            self.controller.set_target_pose(msg.transform.translation, msg.transform.rotation)
-    
+            # time
+            self.docking_interface_time.time = (msg.header.stamp.sec, msg.header.stamp.nanosec)
+
+            # pose
+            self.docking_interface_pose.pose = msg.transform.translation
+            self.docking_interface_pose.orientation = msg.transform.rotation
+            self.docking_interface_pose.x = msg.transform.translation.x - 1.0
+            self.controller.set_target_pose(self.docking_interface_pose)
+
+            # vel
+            vel = self.docking_interface_pose - self.docking_interface_pose_prev
+            vel.pose = vel.pose / (self.docking_interface_time.time - self.docking_interface_time_prev.time)
+            vel.orientation = vel.orientation / (self.docking_interface_time.time - self.docking_interface_time_prev.time)
+            self.controller.set_target_vel(vel)
+
+            # prev state
+            self.docking_interface_pose_prev = self.docking_interface_pose
+            self.docking_interface_time_prev = self.docking_interface_time
+        return
+
 
     def cal_timer_callback(self):
         # start_time = time.time()
@@ -78,6 +110,7 @@ class mppiControllerNode(Node):
         # self.arm_msg.data[3] = 1.0
         # end_time = time.time()
         # self.get_logger().info(str(end_time-start_time))
+        return
 
 
     def pub_timer_callback(self):
@@ -93,14 +126,20 @@ class mppiControllerNode(Node):
         index_map = [self.joint_names.index(joint) for joint in self.joint_order]
         self.interface_values = torch.tensor([values[i] for i in index_map])
         self.controller.set_joint(self.interface_values)
+        return
 
 
     def model_state_callback(self, msg):
         if msg.child_frame_id == 'canadarm/ISS':
             self.controller.set_base_pose(msg.transform.translation, msg.transform.rotation)
-            # self.get_logger().info(f"x: {msg.transform.translation.x:.3f}, y: {msg.transform.translation.y:.3f}, z: {msg.transform.translation.z:.3f}")
+        return
+    
 
-# ISS
+    def hand_eye_image_callback(self, msg):
+        self.hand_eye_image = ros_to_cv2(msg)
+        return
+
+
 def main():
     rclpy.init()
     node = mppiControllerNode()

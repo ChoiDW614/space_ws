@@ -16,11 +16,16 @@ from rclpy.logging import get_logger
 from ament_index_python.packages import get_package_share_directory
 
 from mppi_controller.src.solver.sampling.gaussian_noise import GaussianSample
+from mppi_controller.src.solver.filter.kalman_filter import KalmanFilter
+
 from mppi_controller.src.robot.urdfFks.urdfFk import URDFForwardKinematics
+from mppi_controller.src.robot.urdfFks.urdfFk import URDFForwardKinematics
+from mppi_controller.src.robot.urdfFks.transformation_matrix import transformation_matrix_from_xyzrpy_cpu
+
 from mppi_controller.src.utils.pose import Pose, pose_diff, pos_diff
 from mppi_controller.src.utils.rotation_conversions import euler_angles_to_matrix, matrix_to_euler_angles
 
-from mppi_controller.src.robot.urdfFks.transformation_matrix import transformation_matrix_from_xyzrpy_cpu
+
 class MPPI():
     def __init__(self):
         self.logger = get_logger("MPPI")
@@ -38,7 +43,7 @@ class MPPI():
         self.n_mobile_dof = 6
         self.n_samples = 1024
         self.n_horizen = 32
-        self.dt = 0.01
+        self.dt = 0.1
 
         # Manipulator states
         self._q = torch.zeros(self.n_action, device=self.device)
@@ -65,8 +70,11 @@ class MPPI():
 
         # Target states
         self.target_pose = Pose()
+        self.target_vel = Pose()
         self.target_pose.pose = torch.tensor([0.0, 0.0, 0.0])
-        self.target_pose.orientation = torch.tensor([1.0, 0.0, 0.0, 1.0])
+        self.target_pose.orientation = torch.tensor([0.0, 0.0, 0.0, 1.0])
+
+        self.predict_target_pose = KalmanFilter()
 
         # cost weight parameters
         self._tracking_pose_weight = 1.0
@@ -102,6 +110,13 @@ class MPPI():
 
 
     def compute_control_input(self):
+        self.predict_target_pose.update(self.target_pose, self.target_vel, self.dt)
+        # self.logger.info("true target pose: " + str(self.predict_target_pose.ekf.x[0:3]))
+        # self.logger.info("kalm target pose: " + str(self.target_pose.pose.numpy()))
+        # self.logger.info("err  target pose: " + str(self.predict_target_pose.ekf.x[0:3] - self.target_pose.pose.numpy()))
+        # self.logger.info("true target pose: " + str(self.predict_target_pose.ekf.x[3:7]))
+        # self.logger.info("kalm target pose: " + str(self.target_pose.orientation.numpy()))
+        # self.logger.info("err  target pose: " + str(self.predict_target_pose.ekf.x[3:7] - self.target_pose.orientation.numpy()))
         pose_err = self.prev_forward_kinematics()
 
         if pose_err < 0.01:
@@ -219,4 +234,19 @@ class MPPI():
     def set_target_pose(self, pos, ori):
         self.target_pose.pose = pos
         self.target_pose.orientation = ori
+        return
+
+    def set_target_pose(self, pose: Pose):
+        self.target_pose.pose = pose.pose
+        self.target_pose.orientation = pose.orientation
+        return
+
+    def set_target_vel(self, pos, ori):
+        self.target_vel.pose = pos
+        self.target_vel.orientation = ori
+        return
+
+    def set_target_vel(self, pose: Pose):
+        self.target_vel.pose = pose.pose
+        self.target_vel.orientation = pose.orientation
         return

@@ -113,9 +113,13 @@ RUN pip install torch==2.5.0 \
                 torchaudio==2.5.0 \
                 tensorboard==2.19.0
 
-RUN pip install pin==3.3.1
+RUN pip install pin==3.3.1 \
+                opencv-python \
+                opencv-contrib-python \
+                filterpy
 
-RUN pip install --upgrade --user setuptools==58.3.0
+RUN pip install --upgrade --user setuptools==58.3.0 \
+                                 scipy
 
 # Setup the entrypoint
 COPY ./entrypoint.sh /

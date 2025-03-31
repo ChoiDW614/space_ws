@@ -55,12 +55,15 @@ sudo docker run --rm --runtime=nvidia --gpus all ubuntu nvidia-smi
 
 ## To-do List
 
-- Add a cost function
-- Publish and control the pose of the target satellite
+- Modify a cost function
 - 
 
 ## Changelog
 
+- **2025-03-24**  
+  - Apply a Kalman filter to a target pose
+  - Mounting the camera on CANADARM's end effector and connecting the image to ROS2
+  - Assigning initial velocity to target satellite for tumblig task
 - **2025-03-24**  
   - Porting an mppi controller to a docker container
   - Add an algorithm to update the distribution

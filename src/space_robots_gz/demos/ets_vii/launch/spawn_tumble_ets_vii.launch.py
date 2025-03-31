@@ -3,6 +3,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, RegisterEventHandler
 from launch.substitutions import TextSubstitution, PathJoinSubstitution, LaunchConfiguration, Command
 from launch_ros.actions import Node
+from launch.actions import TimerAction
 from launch_ros.substitutions import FindPackageShare
 from launch.event_handlers import OnProcessExit, OnExecutionComplete
 import os
@@ -35,7 +36,7 @@ def generate_launch_description():
         arguments=[
             '-name', 'ets_vii',
             '-topic', ets_vii_robot_description,
-            '-x', '-2.1649', '-y', '4.4368', '-z', '12.3509',
+            '-x', '-2.1649', '-y', '4.4368', '-z', '8.3509',
             '-R', '-1.43', '-P', '0.16', '-Y', '1.71',
         ],
         output='screen'
@@ -50,5 +51,6 @@ def generate_launch_description():
     return LaunchDescription([
         robot_state_publisher,
         spawn,
+        # set_initial_velocity,
         pose_publisher,
     ])

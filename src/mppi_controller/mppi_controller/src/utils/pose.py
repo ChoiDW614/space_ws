@@ -1,5 +1,5 @@
 import torch
-from mppi_controller.src.utils.rotation_conversions import quaternion_to_matrix, matrix_to_quaternion, matrix_to_euler_angles
+from mppi_controller.src.utils.rotation_conversions import quaternion_to_matrix, matrix_to_quaternion, matrix_to_euler_angles, quaternion_multiply, quaternion_invert
 
 class Pose():
     def __init__(self):
@@ -31,6 +31,30 @@ class Pose():
             self.__orientation = torch.tensor([ori.x, ori.y, ori.z, ori.w])
             self.__tf = quaternion_to_matrix(self.__orientation)
 
+    @property
+    def x(self):
+        return self.__pose[0].item()
+    
+    @x.setter
+    def x(self, value):
+        self.__pose[0] = value
+
+    @property
+    def y(self):
+        return self.__pose[1].item()
+    
+    @y.setter
+    def y(self, value):
+        self.__pose[1] = value
+
+    @property
+    def z(self):
+        return self.__pose[2].item()
+    
+    @z.setter
+    def z(self, value):
+        self.__pose[2] = value
+
     def tf_matrix(self, device = None):
         if device is None:
             matrix = torch.eye(4)
@@ -48,6 +72,18 @@ class Pose():
     def rpy(self):
         return matrix_to_euler_angles(self.__tf, "ZYX")
 
+    def __sub__(self, Ppose):
+        sub_pose = Pose()
+        sub_pose.pose = Ppose.pose - self.__pose
+        sub_pose.orientation = quaternion_multiply(Ppose.orientation, quaternion_invert(self.__orientation))
+        return sub_pose
+    
+    def __add__(self, Ppose):
+        add_pose = Pose()
+        add_pose.pose = Ppose.pose + self.__pose
+        add_pose.orientation = quaternion_multiply(Ppose.orientation, self.__orientation)
+        return add_pose
+    
 
 def pose_diff(ppos1: Pose, ppose2: Pose):
     pose_difference = torch.sum(torch.abs(ppos1.pose - ppose2.pose))

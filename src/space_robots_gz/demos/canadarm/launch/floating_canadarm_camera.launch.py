@@ -1,6 +1,6 @@
 from http.server import executable
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, RegisterEventHandler, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, RegisterEventHandler, IncludeLaunchDescription, TimerAction
 from launch.substitutions import TextSubstitution, PathJoinSubstitution, LaunchConfiguration, Command
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
@@ -12,7 +12,6 @@ from os import environ
 from ament_index_python.packages import get_package_share_directory
 
 import xacro
-
 
 def generate_launch_description():
     # ld = LaunchDescription()
@@ -26,7 +25,7 @@ def generate_launch_description():
            ':'.join([environ.get('IGN_GAZEBO_RESOURCE_PATH', default=''), canadarm_demos_path])}
 
 
-    urdf_model_path = os.path.join(simulation_models_path, 'models', 'canadarm', 'urdf', 'floating_canadarm.urdf.xacro')
+    urdf_model_path = os.path.join(simulation_models_path, 'models', 'canadarm', 'urdf', 'floating_canadarm_camera.urdf.xacro')
     leo_model = os.path.join(canadarm_demos_path, 'worlds', 'simple_wo_iss.world')
 
     doc = xacro.process_file(urdf_model_path)
@@ -64,6 +63,13 @@ def generate_launch_description():
         arguments=['/model/canadarm/pose@geometry_msgs/msg/TransformStamped@ignition.msgs.Pose'],
     )
 
+    image_bridge = Node(
+        package='ros_gz_image',
+        executable='image_bridge',
+        arguments=['/SSRMS_camera/image_raw'],
+        output='screen'
+    )
+
     # Control
     load_joint_state_broadcaster = ExecuteProcess(
         cmd=['ros2', 'control', 'load_controller', '--set-state', 'active',
@@ -80,16 +86,32 @@ def generate_launch_description():
     # Target spawn
     ets_vii_target_spawn = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(get_package_share_directory('ets_vii'),
-                'launch/spawn_ets_vii.launch.py')),
+                'launch/spawn_tumble_ets_vii.launch.py')),
         launch_arguments=[]
     )
+
+    ets_vii_tumbling = ExecuteProcess(
+        cmd=['ign', 'topic', '-t', '/world/default/wrench', '-m', 'ignition.msgs.EntityWrench',
+            '-p', '\"entity:', '{name:', '\'ets_vii\',', 'type:', 'MODEL},', 'wrench:', '{force:', '{x:50000,', 'y:50000},',
+            'torque:', '{x:50000,', 'y:50000,', 'z:50000}}\"'],
+        output='screen',
+        shell=True
+    )
+
+    delay_ets_vii_tumbling = TimerAction(
+        period=6.0,
+        actions=[ets_vii_tumbling]
+    )
+
 
     return LaunchDescription([
         start_world,
         robot_state_publisher,
         pose_publisher,
+        image_bridge,
         spawn,
         ets_vii_target_spawn,
+        delay_ets_vii_tumbling,
 
         RegisterEventHandler(
             OnProcessExit(
