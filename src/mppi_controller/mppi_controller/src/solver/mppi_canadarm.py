@@ -16,9 +16,8 @@ from rclpy.logging import get_logger
 from ament_index_python.packages import get_package_share_directory
 
 from mppi_controller.src.solver.sampling.gaussian_noise import GaussianSample
-from mppi_controller.src.solver.filter.kalman_filter import KalmanFilter
+from mppi_controller.src.solver.cost.pose_cost import PoseCost
 
-from mppi_controller.src.robot.urdfFks.urdfFk import URDFForwardKinematics
 from mppi_controller.src.robot.urdfFks.urdfFk import URDFForwardKinematics
 from mppi_controller.src.robot.urdfFks.transformation_matrix import transformation_matrix_from_xyzrpy_cpu
 
@@ -27,7 +26,7 @@ from mppi_controller.src.utils.rotation_conversions import euler_angles_to_matri
 
 
 class MPPI():
-    def __init__(self):
+    def __init__(self, isBaseMoving):
         self.logger = get_logger("MPPI")
 
         # torch env
@@ -38,12 +37,21 @@ class MPPI():
         torch.set_default_dtype(torch.float32)
 
         # Sampling parameters
-        self.n_action = 13
-        self.n_manipulator_dof = 7
-        self.n_mobile_dof = 6
-        self.n_samples = 1024
-        self.n_horizen = 32
-        self.dt = 0.1
+        self.isBaseMoving = isBaseMoving
+        if self.isBaseMoving:
+            self.n_action = 13
+            self.n_manipulator_dof = 7
+            self.n_mobile_dof = 6
+            self.n_samples = 1024
+            self.n_horizen = 32
+            self.dt = 0.1
+        else:
+            self.n_action = 7
+            self.n_manipulator_dof = 7
+            self.n_mobile_dof = 0
+            self.n_samples = 1024
+            self.n_horizen = 32
+            self.dt = 0.1
 
         # Manipulator states
         self._q = torch.zeros(self.n_action, device=self.device)
@@ -70,25 +78,19 @@ class MPPI():
 
         # Target states
         self.target_pose = Pose()
-        self.target_vel = Pose()
         self.target_pose.pose = torch.tensor([0.0, 0.0, 0.0])
         self.target_pose.orientation = torch.tensor([0.0, 0.0, 0.0, 1.0])
-
-        self.predict_target_pose = KalmanFilter()
-
-        # cost weight parameters
-        self._tracking_pose_weight = 1.0
-        self._tracking_orientation_weight = 0.1
-
-        self._terminal_pose_weight = 10.0
-        self._terminal_orientation_weight = 1.0
+        self.predict_target_pose = torch.zeros((self.n_horizen, 6))
         
-        self._gamma = 0.98
+        self.pose_cost = PoseCost(self.n_horizen, self.device)
         self._lambda = 100.0
 
         # Import URDF for forward kinematics
         package_name = "mppi_controller"
-        urdf_file_path = os.path.join(get_package_share_directory(package_name), "models", "canadarm", "floating_canadarm.urdf")
+        if self.isBaseMoving:
+            urdf_file_path = os.path.join(get_package_share_directory(package_name), "models", "canadarm", "floating_canadarm.urdf")
+        else:
+            urdf_file_path = os.path.join(get_package_share_directory(package_name), "models", "canadarm", "Canadarm2_w_iss.urdf")
 
         self.fk_canadarm = URDFForwardKinematics(urdf_file_path, root_link='Base_SSRMS', end_links = 'EE_SSRMS')
 
@@ -110,13 +112,6 @@ class MPPI():
 
 
     def compute_control_input(self):
-        self.predict_target_pose.update(self.target_pose, self.target_vel, self.dt)
-        # self.logger.info("true target pose: " + str(self.predict_target_pose.ekf.x[0:3]))
-        # self.logger.info("kalm target pose: " + str(self.target_pose.pose.numpy()))
-        # self.logger.info("err  target pose: " + str(self.predict_target_pose.ekf.x[0:3] - self.target_pose.pose.numpy()))
-        # self.logger.info("true target pose: " + str(self.predict_target_pose.ekf.x[3:7]))
-        # self.logger.info("kalm target pose: " + str(self.target_pose.orientation.numpy()))
-        # self.logger.info("err  target pose: " + str(self.predict_target_pose.ekf.x[3:7] - self.target_pose.orientation.numpy()))
         pose_err = self.prev_forward_kinematics()
 
         if pose_err < 0.01:
@@ -124,59 +119,23 @@ class MPPI():
             return self.u_prev
 
         samples = self.sample_gen.get_action(n_sample=self.n_samples, q=self._q, seed=time.time_ns())
-        self.eefTraj = self.fk_canadarm.forward_kinematics(samples, 'EE_SSRMS', 'Base_SSRMS', self.base_pose.tf_matrix(self.device), base_movement=True)
+        self.eefTraj = self.fk_canadarm.forward_kinematics(samples, 'EE_SSRMS', 'Base_SSRMS', self.base_pose.tf_matrix(self.device), base_movement=self.isBaseMoving)
 
-        tracking_cost = self.tracking_cost()
-        terminal_cost = self.terminal_cost()
+        # tracking_cost = self.pose_cost.tracking_cost(self.eefTraj, self.target_pose)
+        tracking_cost = self.pose_cost.predict_tracking_cost(self.eefTraj, self.predict_target_pose)
+        terminal_cost = self.pose_cost.terminal_cost(self.eefTraj, self.target_pose)
         u = self.update_control_input(samples, tracking_cost, terminal_cost)
         
         return u
     
 
     def prev_forward_kinematics(self):
-        tf_base = transformation_matrix_from_xyzrpy_cpu(q=self._q)
-
         self.ee_pose.from_matrix(self.fk_canadarm.forward_kinematics_cpu(self._q[self.n_mobile_dof:], 'EE_SSRMS', 'Base_SSRMS', self.base_pose.tf_matrix(), base_movement=False))
         pose_err = pos_diff(self.ee_pose, self.target_pose)
 
         # self.logger.info("pose2: " + str(self.ee_pose.pose))
         # self.logger.info("pose err: " + str(round(pose_err.detach().item(), 3)))
         return pose_err
-
-    
-    def tracking_cost(self):
-        ee_sample_pose = self.eefTraj[:,:,0:3,3]
-        ee_sample_orientation = self.eefTraj[:,:,0:3,0:3]
-
-        diff_pose = ee_sample_pose - self.target_pose.pose.to(device=self.device)
-        diff_orientation = matrix_to_euler_angles(ee_sample_orientation, "ZYX") - self.target_pose.rpy().to(device=self.device)
-
-        cost_pose = torch.sum(torch.pow(diff_pose, 2), dim=2)
-        cost_orientation = torch.sum(torch.abs(diff_orientation), dim=2)
-
-        # tracking_cost = self._tracking_pose_weight * cost_pose + self._tracking_orientation_weight * cost_orientation
-        tracking_cost = self._tracking_pose_weight * cost_pose
-
-        gamma = self._gamma ** torch.arange(self.n_horizen, device=self.device)
-        tracking_cost = tracking_cost * gamma
-        return tracking_cost
-    
-
-    def terminal_cost(self):
-        ee_terminal_pose = self.eefTraj[:,-1,0:3,3]
-        ee_terminal_orientation = self.eefTraj[:,-1,0:3,0:3]
-
-        diff_pose = ee_terminal_pose - self.target_pose.pose.to(device=self.device)
-        diff_orientation = matrix_to_euler_angles(ee_terminal_orientation, "ZYX") - self.target_pose.rpy().to(device=self.device)
-
-        cost_pose = torch.sum(torch.pow(diff_pose, 2), dim=1)
-        cost_orientation = torch.sum(torch.abs(diff_orientation), dim=1)
-
-        terminal_cost = self._terminal_pose_weight * cost_pose + self._terminal_orientation_weight * cost_orientation
-        terminal_cost = self._terminal_pose_weight * cost_pose
-
-        terminal_cost = (self._gamma ** self.n_horizen) * terminal_cost
-        return terminal_cost
 
     
     def update_control_input(self, samples, tracking_cost, terminal_cost):
@@ -241,12 +200,7 @@ class MPPI():
         self.target_pose.orientation = pose.orientation
         return
 
-    def set_target_vel(self, pos, ori):
-        self.target_vel.pose = pos
-        self.target_vel.orientation = ori
+    def set_predict_target_pose(self, pose: np.ndarray):
+        self.predict_target_pose = torch.from_numpy(pose).to(self.device)
         return
-
-    def set_target_vel(self, pose: Pose):
-        self.target_vel.pose = pose.pose
-        self.target_vel.orientation = pose.orientation
-        return
+    

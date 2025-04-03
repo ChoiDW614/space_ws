@@ -36,17 +36,17 @@
       <plugin filename="ImageDisplay" name="Image Display 1">
         <ignition-gui>
           <title>Image Display 1</title>
-          <property type="string" key="state">docked</property>
+          <property type="string" key="state">floating</property>
         </ignition-gui>
         <topic>/SSRMS_camera/ee/image_raw</topic>
       </plugin>
-      <plugin filename="ImageDisplay" name="Image Display 2">
+      <!-- <plugin filename="ImageDisplay" name="Image Display 2">
         <ignition-gui>
           <title>Image Display 2</title>
           <property type="string" key="state">docked</property>
         </ignition-gui>
         <topic>/SSRMS_camera/base/image_raw</topic>
-      </plugin>
+      </plugin> -->
     </gui>
 
     <light type="directional" name="sun">

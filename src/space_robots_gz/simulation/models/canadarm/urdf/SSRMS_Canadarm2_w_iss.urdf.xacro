@@ -11,6 +11,7 @@ The link CoM locations (with respect to link frame) are set to zero as the inert
   <!-- Gazebo - ROS2 Control macro -->
   <xacro:include filename="$(find simulation)/models/canadarm/urdf/SSRMS_Canadarm2_w_iss.gazebo.xacro" />
   <xacro:ssrms_canadarm2_gazebo command_interface="position" />
+  <xacro:property name="PI" value="3.1415926535897931"/>
 
   <link name="world" />
 
@@ -268,13 +269,11 @@ The link CoM locations (with respect to link frame) are set to zero as the inert
 
   <!-- Link 6 -->
   <link name="B5">
-
     <inertial>
       <origin rpy="1.5708 0 0" xyz="0 0 0.0"/>
       <mass value="105.98"/>
       <inertia ixx="8.305" ixy="0" ixz="0" iyy="3.061" iyz="0" izz="8.0386"/>
     </inertial>
-
     <visual>
       <origin rpy="0 -3.14 0" xyz="0 0 0"/>
       <geometry>
@@ -300,13 +299,11 @@ The link CoM locations (with respect to link frame) are set to zero as the inert
 
   <!-- Link 7 -->
   <link name="B6">
-
     <inertial>
       <origin rpy="0 -1.5708 0" xyz="0 0 0"/>
       <mass value="105.98"/>
       <inertia ixx="12.13" ixy="0" ixz="0" iyy="12.13" iyz="0" izz="3.061"/>
     </inertial>
-
     <visual>
       <origin rpy="0 -1.5708 0" xyz="0 0 0"/>
       <geometry>
@@ -333,13 +330,11 @@ The link CoM locations (with respect to link frame) are set to zero as the inert
 
   <!-- Link 8 -->
   <link name="EE_SSRMS">
-
     <inertial>
       <origin rpy="0 1.5708 0" xyz="0 0 -0.5"/>
       <mass value="243.66"/>
       <inertia ixx="9.336" ixy="0" ixz="0" iyy="44.41" iyz="0" izz="44.41"/>
     </inertial>
-
     <visual>
       <origin rpy="0 -3.1415 0" xyz="0 0 0"/>
       <geometry>
@@ -352,8 +347,49 @@ The link CoM locations (with respect to link frame) are set to zero as the inert
         <mesh filename="package://simulation/models/canadarm/meshes/ee.stl" scale="1.0 1.0 1.0" />
       </geometry>
     </collision>
-
   </link>
+
+  <joint name="head_camera_joint" type="fixed">
+    <parent link="EE_SSRMS"/>
+    <child link="camera_link"/>
+    <origin xyz="-0.292 -0.003 -1.15" rpy="0 ${PI/2} 0"/>
+  </joint>
+
+  <link name="camera_link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.001" />
+      <inertia ixx="9.1875e-09" ixy="0.0" ixz="0.0" iyy="9.1875e-09" iyz="0.0" izz="1.378125e-08"/>
+    </inertial>
+		<visual>
+      <origin rpy="0.0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="0.0005 0.0005 0.0005"/>
+      </geometry>
+      <material name="green"/>
+    </visual>
+	</link>
+
+  <joint name="base_camera_joint" type="fixed">
+    <parent link="B1"/>
+    <child link="base_camera_link"/>
+    <origin xyz="-0.292 -0.003 -1.15" rpy="0 ${PI/2} 0"/>
+  </joint>
+
+  <link name="base_camera_link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.001" />
+      <inertia ixx="9.1875e-09" ixy="0.0" ixz="0.0" iyy="9.1875e-09" iyz="0.0" izz="1.378125e-08"/>
+    </inertial>
+		<visual>
+      <origin rpy="0.0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="0.0005 0.0005 0.0005"/>
+      </geometry>
+      <material name="green"/>
+    </visual>
+	</link>
 
 </robot>
 

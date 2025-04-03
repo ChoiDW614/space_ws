@@ -1,3 +1,5 @@
+from builtin_interfaces.msg import Time as MSG_Time
+
 class Time():
     def __init__(self, sec: int = None, nanosec: int = None):
         if sec is None:
@@ -33,10 +35,20 @@ class Time():
 
     @time.setter
     def time(self, args):
-        sec, nanosec = args
-        self.__sec = sec
-        self.__nanosec = nanosec
-        self._time()
+        if isinstance(args, MSG_Time):
+            self.__sec = args.sec
+            self.__nanosec = args.nanosec
+            self._time()
+        elif isinstance(args, float):
+            self.__sec = int(args)
+            self.__nanosec = int((args - int(args)) * 1e9)
+            self._time()
+        else:
+            sec, nanosec = args
+            self.__sec = sec
+            self.__nanosec = nanosec
+            self._time()
+
 
     def _time(self):
         self.__time = self.__sec + self.__nanosec * 1e-9

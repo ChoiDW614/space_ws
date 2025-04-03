@@ -5,7 +5,7 @@ class Pose():
     def __init__(self):
         self.__pose = torch.zeros(3)
         self.__orientation = torch.tensor([0.0, 0.0, 0.0, 1.0])
-        self.__tf = None
+        self.__tf = quaternion_to_matrix(self.__orientation)
 
     @property
     def pose(self):
@@ -30,6 +30,22 @@ class Pose():
         else:
             self.__orientation = torch.tensor([ori.x, ori.y, ori.z, ori.w])
             self.__tf = quaternion_to_matrix(self.__orientation)
+
+    @property
+    def np_pose(self):
+        return self.__pose.numpy()
+    
+    @property
+    def np_orientation(self):
+        return self.__orientation.numpy()
+    
+    @property
+    def rpy(self):
+        return matrix_to_euler_angles(self.__tf, "ZYX")
+
+    @property
+    def np_rpy(self):
+        return matrix_to_euler_angles(self.__tf, "ZYX").numpy()
 
     @property
     def x(self):
@@ -69,20 +85,24 @@ class Pose():
         self.__orientation = matrix_to_quaternion(matrix[0:3, 0:3])
         self.__tf = matrix[0:3, 0:3]
 
-    def rpy(self):
-        return matrix_to_euler_angles(self.__tf, "ZYX")
-
     def __sub__(self, Ppose):
         sub_pose = Pose()
-        sub_pose.pose = Ppose.pose - self.__pose
-        sub_pose.orientation = quaternion_multiply(Ppose.orientation, quaternion_invert(self.__orientation))
+        sub_pose.pose = self.__pose - Ppose.pose
+        sub_pose.orientation = quaternion_multiply(self.__orientation, quaternion_invert(Ppose.orientation))
         return sub_pose
-    
+
     def __add__(self, Ppose):
         add_pose = Pose()
-        add_pose.pose = Ppose.pose + self.__pose
-        add_pose.orientation = quaternion_multiply(Ppose.orientation, self.__orientation)
+        add_pose.pose = self.__pose + Ppose.pose
+        add_pose.orientation = quaternion_multiply(self.__orientation, Ppose.orientation)
         return add_pose
+    
+    def copy(self):
+        new_pose = Pose()
+        new_pose.pose = self.__pose.clone()
+        new_pose.orientation = self.__orientation.clone()
+        return new_pose
+
     
 
 def pose_diff(ppos1: Pose, ppose2: Pose):

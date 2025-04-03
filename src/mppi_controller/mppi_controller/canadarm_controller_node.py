@@ -12,14 +12,18 @@ from sensor_msgs.msg import Image
 
 from gazebo_msgs.srv import SetEntityState
 from std_srvs.srv import Empty
+from rclpy.logging import get_logger
 
+import cv2
+import time
 import numpy as np
 import torch
 
-import cv2
-
 from mppi_controller.src.solver.mppi_canadarm import MPPI
+from mppi_controller.src.solver.target.target_state import DockingInterface
+
 from mppi_controller.src.robot.canadarm_wrapper import CanadarmWrapper
+
 from mppi_controller.src.utils.pose import Pose
 from mppi_controller.src.utils.time import Time
 from mppi_controller.src.utils.image_pipeline import ros_to_cv2
@@ -28,33 +32,33 @@ from mppi_controller.src.utils.image_pipeline import ros_to_cv2
 class mppiControllerNode(Node):
     def __init__(self):
         super().__init__("mppi_controller_node")
-
         # self.canadarmWrapper = CanadarmWrapper()
-        self.controller = MPPI()
 
         # target states
-        self.docking_interface_pose = Pose()
-        self.docking_interface_pose_prev = Pose()
-        self.docking_interface_time = Time()
-        self.docking_interface_time_prev = Time()
-
-        self.init_docking_interface_pose = Pose()
-        self.init_docking_interface_pose.pose = torch.tensor([-2.1649, 4.4368, 5.3509])
-        self.init_docking_interface_pose.orientation = torch.tensor([-0.4744, -0.4535,  0.6023,  0.4544])
-        self.controller.predict_target_pose.set_init_pose(self.docking_interface_pose)
+        init_interface_pose = Pose()
+        init_interface_pose.pose = torch.tensor([-2.1649, 4.4368, 4.3509])
+        init_interface_pose.orientation = torch.tensor([-0.4744, -0.4535,  0.6023,  0.4544])
+        self.docking_interface = DockingInterface(init_pose=init_interface_pose, predict_step=32)
         
         # camera images
         self.hand_eye_image = None
         self.base_image = None
 
         # joint control states
-        self.joint_order = [
-            "v_x_joint", "v_y_joint", "v_z_joint", "v_r_joint", "v_p_joint", "v_yaw_joint",
-            "Base_Joint", "Shoulder_Roll", "Shoulder_Yaw", "Elbow_Pitch", "Wrist_Pitch", "Wrist_Yaw", "Wrist_Roll"
-        ]
+        self.isBaseMoving = True
+        if self.isBaseMoving:
+            self.joint_order = [
+                "v_x_joint", "v_y_joint", "v_z_joint", "v_r_joint", "v_p_joint", "v_yaw_joint",
+                "Base_Joint", "Shoulder_Roll", "Shoulder_Yaw", "Elbow_Pitch", "Wrist_Pitch", "Wrist_Yaw", "Wrist_Roll"]
+        else:
+            self.joint_order = [
+                "Base_Joint", "Shoulder_Roll", "Shoulder_Yaw", "Elbow_Pitch", "Wrist_Pitch", "Wrist_Yaw", "Wrist_Roll"]
         self.joint_names = None
         self.interface_name = None
         self.interface_values = None
+
+        # controller
+        self.controller = MPPI(isBaseMoving=self.isBaseMoving)
 
         # model state subscriber
         subscribe_qos_profile = QoSProfile(depth=5, reliability=ReliabilityPolicy.BEST_EFFORT, durability=DurabilityPolicy.VOLATILE)
@@ -77,24 +81,23 @@ class mppiControllerNode(Node):
 
     def target_state_callback(self, msg):
         if msg.child_frame_id == 'ets_vii':
-            # time
-            self.docking_interface_time.time = (msg.header.stamp.sec, msg.header.stamp.nanosec)
+            self.docking_interface.time = msg.header.stamp
 
-            # pose
-            self.docking_interface_pose.pose = msg.transform.translation
-            self.docking_interface_pose.orientation = msg.transform.rotation
-            self.docking_interface_pose.x = msg.transform.translation.x - 1.0
-            self.controller.set_target_pose(self.docking_interface_pose)
+            # true pose
+            self.docking_interface.pose.pose = msg.transform.translation
+            self.docking_interface.pose.orientation = msg.transform.rotation
+            self.docking_interface.pose.x = msg.transform.translation.x - 1.0
 
-            # vel
-            vel = self.docking_interface_pose - self.docking_interface_pose_prev
-            vel.pose = vel.pose / (self.docking_interface_time.time - self.docking_interface_time_prev.time)
-            vel.orientation = vel.orientation / (self.docking_interface_time.time - self.docking_interface_time_prev.time)
-            self.controller.set_target_vel(vel)
+            self.docking_interface.update_velocity()
+
+            # kalman filter update
+            self.docking_interface.ekf_update()
+            self.controller.set_target_pose(self.docking_interface.pose)
+            self.controller.set_predict_target_pose(self.docking_interface.predict_pose)
 
             # prev state
-            self.docking_interface_pose_prev = self.docking_interface_pose
-            self.docking_interface_time_prev = self.docking_interface_time
+            self.docking_interface.pose_prev = self.docking_interface.pose
+            self.docking_interface.time_prev = self.docking_interface.time
         return
 
 
@@ -102,14 +105,6 @@ class mppiControllerNode(Node):
         # start_time = time.time()
         u = self.controller.compute_control_input()
         self.arm_msg.data = u.tolist()
-        # self.arm_msg.data = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-        # for i in range(0, 13):
-        #     self.arm_msg.data[i] = 0.0
-
-        # self.arm_msg.data[0] = 1.0
-        # self.arm_msg.data[1] = 2.0
-        # self.arm_msg.data[2] = 5.0
-        # self.arm_msg.data[3] = 1.0
         # end_time = time.time()
         # self.get_logger().info(str(end_time-start_time))
         return

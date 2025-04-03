@@ -1,18 +1,17 @@
 from http.server import executable
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, RegisterEventHandler, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, RegisterEventHandler, IncludeLaunchDescription, TimerAction
 from launch.substitutions import TextSubstitution, PathJoinSubstitution, LaunchConfiguration, Command
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.event_handlers import OnProcessExit, OnExecutionComplete
+from launch.event_handlers import OnProcessExit
 import os
 from os import environ
 
 from ament_index_python.packages import get_package_share_directory
 
 import xacro
-
 
 def generate_launch_description():
     # ld = LaunchDescription()
@@ -27,8 +26,7 @@ def generate_launch_description():
 
 
     urdf_model_path = os.path.join(simulation_models_path, 'models', 'canadarm', 'urdf', 'SSRMS_Canadarm2_w_iss.urdf.xacro')
-    leo_model = os.path.join(canadarm_demos_path, 'worlds', 'simple_wo_iss.world')
-
+    leo_model = os.path.join(canadarm_demos_path, 'worlds', 'simple_wo_iss_display.world')
     doc = xacro.process_file(urdf_model_path)
     robot_description = {'robot_description': doc.toxml()}
 
@@ -58,12 +56,17 @@ def generate_launch_description():
         output='screen'
     )
 
-    pose_publisher = ExecuteProcess(
-        cmd=[
-            'ros2', 'run', 'ros_gz_bridge', 'parameter_bridge',
-            '/world/default/pose/info@geometry_msgs/msg/PoseArray@ignition.msgs.Pose_V'
-        ],
-        shell=False
+    pose_publisher = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        arguments=['/model/canadarm/pose@geometry_msgs/msg/TransformStamped@ignition.msgs.Pose'],
+    )
+
+    image_bridge = Node(
+        package='ros_gz_image',
+        executable='image_bridge',
+        arguments=['/SSRMS_camera/ee/image_raw', '/SSRMS_camera/base/image_raw'],
+        output='screen'
     )
 
     # Control
@@ -73,30 +76,41 @@ def generate_launch_description():
         output='screen'
     )
 
-    # load_canadarm_joint_controller = ExecuteProcess(
-    #     cmd=['ros2', 'control', 'load_controller', '--set-state', 'active',
-    #          'canadarm_joint_trajectory_controller'],
-    #     output='screen'
-    # )
-
     load_canadarm_joint_controller = ExecuteProcess(
         cmd=['ros2', 'control', 'load_controller', '--set-state', 'active',
-             'canadarm_joint_controller'],
+             'floating_canadarm_joint_controller'],
         output='screen'
     )
 
+    # Target spawn
     ets_vii_target_spawn = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(get_package_share_directory('ets_vii'),
-                'launch/spawn_ets_vii.launch.py')),
+                'launch/spawn_tumble_ets_vii.launch.py')),
         launch_arguments=[]
     )
+
+    ets_vii_tumbling = ExecuteProcess(
+        cmd=['ign', 'topic', '-t', '/world/default/wrench', '-m', 'ignition.msgs.EntityWrench',
+            '-p', '\"entity:', '{name:', '\'ets_vii\',', 'type:', 'MODEL},', 'wrench:', '{force:', '{x:50000,', 'y:50000},',
+            'torque:', '{x:50000,', 'y:50000,', 'z:50000}}\"'],
+        output='screen',
+        shell=True
+    )
+
+    delay_ets_vii_tumbling = TimerAction(
+        period=6.0,
+        actions=[ets_vii_tumbling]
+    )
+
 
     return LaunchDescription([
         start_world,
         robot_state_publisher,
         pose_publisher,
+        image_bridge,
         spawn,
         ets_vii_target_spawn,
+        delay_ets_vii_tumbling,
 
         RegisterEventHandler(
             OnProcessExit(

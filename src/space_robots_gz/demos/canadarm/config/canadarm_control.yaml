@@ -14,8 +14,6 @@ controller_manager:
 floating_canadarm_joint_controller:
   ros__parameters:
     joints:
-      - v_x_joint
-      - v_y_joint
       - Base_Joint
       - Shoulder_Roll
       - Shoulder_Yaw
