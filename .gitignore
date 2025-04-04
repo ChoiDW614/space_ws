@@ -1,2 +1,5 @@
 .vscode/
+build/
+install/
+log/
 src/mppi_controller/mppi_controller/runs/

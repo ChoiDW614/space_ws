@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <robot xmlns:xacro="http://wiki.ros.org/xacro">
 
-  <xacro:macro name="franka_gazebo" params="command_interface:=position">
+  <xacro:macro name="franka_gazebo" params="command_interface:=effort">
 
   <ros2_control name="FrankaSystem" type="system">
       <hardware>

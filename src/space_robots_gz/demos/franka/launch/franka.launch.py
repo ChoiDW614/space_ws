@@ -73,23 +73,17 @@ def generate_launch_description():
         output='screen'
     )
 
-    # load_franka_joint_controller = ExecuteProcess(
-    #     cmd=['ros2', 'control', 'load_controller', '--set-state', 'active',
-    #          'franka_joint_trajectory_controller'],
-    #     output='screen'
-    # )
-
     load_franka_joint_controller = ExecuteProcess(
         cmd=['ros2', 'control', 'load_controller', '--set-state', 'active',
              'franka_joint_controller'],
         output='screen'
     )
 
-    # ets_vii_target_spawn = IncludeLaunchDescription(
-    #     PythonLaunchDescriptionSource(os.path.join(get_package_share_directory('ets_vii'),
-    #             'launch/spawn_ets_vii.launch.py')),
-    #     launch_arguments=[]
-    # )
+    franka_wrapper_spawn = Node(
+        package="mppi_controller",
+        executable="franka_controller_node",
+        output='screen'
+    )
 
     return LaunchDescription([
         start_world,
@@ -107,6 +101,12 @@ def generate_launch_description():
             OnProcessExit(
                 target_action=load_joint_state_broadcaster,
                 on_exit=[load_franka_joint_controller],
+            )
+        ),
+        RegisterEventHandler(
+            OnProcessExit(
+                target_action=load_franka_joint_controller,
+                on_exit=[franka_wrapper_spawn],
             )
         ),
     ])

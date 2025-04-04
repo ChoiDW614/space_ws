@@ -5,47 +5,25 @@ from rclpy.qos import QoSProfile
 from rclpy.qos import DurabilityPolicy
 from rclpy.qos import ReliabilityPolicy
 
-from control_msgs.msg import DynamicJointState
-from geometry_msgs.msg import TransformStamped
 from std_msgs.msg import Float64MultiArray
-from sensor_msgs.msg import Image
+from control_msgs.msg import DynamicJointState
 
-from gazebo_msgs.srv import SetEntityState
-from std_srvs.srv import Empty
-from rclpy.logging import get_logger
-
-import cv2
-import time
 import numpy as np
 import torch
 
-from mppi_controller.src.solver.mppi_canadarm import MPPI
-from mppi_controller.src.solver.target.target_state import DockingInterface
-
-from mppi_controller.src.robot.canadarm_wrapper import CanadarmWrapper
-
-from mppi_controller.src.utils.pose import Pose
-from mppi_controller.src.utils.time import Time
-from mppi_controller.src.utils.image_pipeline import ros_to_cv2
+from mppi_controller.src.wrapper.canadarm_wrapper import CanadarmWrapper
 
 
-class mppiControllerNode(Node):
+class MppiControllerNode(Node):
     def __init__(self):
         super().__init__("mppi_controller_node")
-        # self.canadarmWrapper = CanadarmWrapper()
+        self.canadarmWrapper = CanadarmWrapper()
 
-        # target states
-        init_interface_pose = Pose()
-        init_interface_pose.pose = torch.tensor([-2.1649, 4.4368, 4.3509])
-        init_interface_pose.orientation = torch.tensor([-0.4744, -0.4535,  0.6023,  0.4544])
-        self.docking_interface = DockingInterface(init_pose=init_interface_pose, predict_step=32)
-        
-        # camera images
-        self.hand_eye_image = None
-        self.base_image = None
+        self.canadaFlag = False
+        self.solverFlag= False
 
         # joint control states
-        self.isBaseMoving = True
+        self.isBaseMoving = False
         if self.isBaseMoving:
             self.joint_order = [
                 "v_x_joint", "v_y_joint", "v_z_joint", "v_r_joint", "v_p_joint", "v_yaw_joint",
@@ -57,94 +35,75 @@ class mppiControllerNode(Node):
         self.interface_name = None
         self.interface_values = None
 
-        # controller
-        self.controller = MPPI(isBaseMoving=self.isBaseMoving)
-
         # model state subscriber
         subscribe_qos_profile = QoSProfile(depth=5, reliability=ReliabilityPolicy.BEST_EFFORT, durability=DurabilityPolicy.VOLATILE)
-        
         self.joint_state_subscriber = self.create_subscription(DynamicJointState, '/dynamic_joint_states', self.joint_state_callback, subscribe_qos_profile)
-        self.base_state_subscriber = self.create_subscription(TransformStamped, '/model/canadarm/pose', self.model_state_callback, subscribe_qos_profile)
-        self.target_state_subscriber = self.create_subscription(TransformStamped, '/model/ets_vii/pose', self.target_state_callback, subscribe_qos_profile)
-        self.hand_eye_camera_subscriber = self.create_subscription(Image, '/SSRMS_camera/ee/image_raw', self.hand_eye_image_callback, subscribe_qos_profile)
-        self.base_camera_subscriber = self.create_subscription(Image, '/SSRMS_camera/base/image_raw', self.base_image_callback, subscribe_qos_profile)
+        self.target_joint_subscriber = self.create_subscription(Float64MultiArray, '/canadarm_joint_controller/target_joint_states', self.target_joint_callback, subscribe_qos_profile)
 
         # publisher
-        cal_timer_period = 0.1  # seconds
-        pub_timer_period = 1  # seconds
+        cal_timer_period = 0.01  # seconds
+        pub_timer_period = 0.01  # seconds
         self.cal_timer = self.create_timer(cal_timer_period, self.cal_timer_callback)
         self.pub_timer = self.create_timer(pub_timer_period, self.pub_timer_callback)
 
         self.arm_msg = Float64MultiArray()
-        self.arm_publisher = self.create_publisher(Float64MultiArray, '/floating_canadarm_joint_controller/commands', 10)
-
-
-    def target_state_callback(self, msg):
-        if msg.child_frame_id == 'ets_vii':
-            self.docking_interface.time = msg.header.stamp
-
-            # true pose
-            self.docking_interface.pose.pose = msg.transform.translation
-            self.docking_interface.pose.orientation = msg.transform.rotation
-            self.docking_interface.pose.x = msg.transform.translation.x - 1.0
-
-            self.docking_interface.update_velocity()
-
-            # kalman filter update
-            self.docking_interface.ekf_update()
-            self.controller.set_target_pose(self.docking_interface.pose)
-            self.controller.set_predict_target_pose(self.docking_interface.predict_pose)
-
-            # prev state
-            self.docking_interface.pose_prev = self.docking_interface.pose
-            self.docking_interface.time_prev = self.docking_interface.time
-        return
+        if self.isBaseMoving:
+            self.arm_publisher = self.create_publisher(Float64MultiArray, '/floating_canadarm_joint_controller/commands', 10)
+        else:
+            self.arm_publisher = self.create_publisher(Float64MultiArray, '/canadarm_joint_controller/commands', 10)
 
 
     def cal_timer_callback(self):
-        # start_time = time.time()
-        u = self.controller.compute_control_input()
-        self.arm_msg.data = u.tolist()
-        # end_time = time.time()
-        # self.get_logger().info(str(end_time-start_time))
+        if self.canadaFlag:
+            if not self.solverFlag:
+                qdes = np.array([0.0, -0.0, 0.0, -0.0, 0.0, 0.0, 0.0])
+                qddot_des = 400 * (qdes - self.canadarmWrapper.state.q) - 10 * self.canadarmWrapper.state.v
+                u = self.canadarmWrapper.state.M @ qddot_des + self.canadarmWrapper.state.G
+                self.arm_msg.data = u.tolist()
+            else:
+                # self.controller.set_joint(self.interface_values)
+                # u, qdes, vdes = self.controller.compute_control_input()
+                # qdes = qdes.clone().cpu().numpy()
+                # vdes = vdes.clone().cpu().numpy()
+
+                # qddot_des = 40 * (qdes - self.canadarmWrapper.state.q)  + 4 * (vdes - self.canadarmWrapper.state.v)
+                # qddot_des = u.clone().cpu().numpy()
+                target_joint = np.array(self.target_joint)
+                qddot_des = 400 * (target_joint[:7] - self.canadarmWrapper.state.q) + 40 * (target_joint[7:] - self.canadarmWrapper.state.v)
+                u = self.canadarmWrapper.state.M @ qddot_des + self.canadarmWrapper.state.G
+                self.arm_msg.data = u.tolist()
         return
 
 
     def pub_timer_callback(self):
-        self.arm_publisher.publish(self.arm_msg)
+        if self.canadaFlag and self.solverFlag:
+            self.arm_publisher.publish(self.arm_msg)
         return
 
 
     def joint_state_callback(self, msg):
+        self.canadaFlag = True
         self.joint_names = msg.joint_names
         self.interface_name = [iv.interface_names for iv in msg.interface_values]
         values = [list(iv.values) for iv in msg.interface_values]
 
         index_map = [self.joint_names.index(joint) for joint in self.joint_order]
         self.interface_values = torch.tensor([values[i] for i in index_map])
-        self.controller.set_joint(self.interface_values)
+        self.canadarmWrapper.state.q = self.interface_values.clone().cpu().numpy()[:,0]
+        self.canadarmWrapper.state.v = self.interface_values.clone().cpu().numpy()[:,1]
+        self.canadarmWrapper.computeAllTerms()
         return
 
 
-    def model_state_callback(self, msg):
-        if msg.child_frame_id == 'canadarm/ISS':
-            self.controller.set_base_pose(msg.transform.translation, msg.transform.rotation)
-        return
-    
-
-    def hand_eye_image_callback(self, msg):
-        self.hand_eye_image = ros_to_cv2(msg)
-        return
-
-
-    def base_image_callback(self, msg):
-        self.base_image = ros_to_cv2(msg)
+    def target_joint_callback(self, msg):
+        self.solverFlag = True
+        self.target_joint = msg.data
         return
 
 
 def main():
     rclpy.init()
-    node = mppiControllerNode()
+    node = MppiControllerNode()
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()

@@ -78,7 +78,13 @@ def generate_launch_description():
 
     load_canadarm_joint_controller = ExecuteProcess(
         cmd=['ros2', 'control', 'load_controller', '--set-state', 'active',
-             'floating_canadarm_joint_controller'],
+             'canadarm_joint_controller'],
+        output='screen'
+    )
+
+    canadarm_wrapper_spawn = Node(
+        package="mppi_controller",
+        executable="canadarm_controller_node",
         output='screen'
     )
 
@@ -122,6 +128,12 @@ def generate_launch_description():
             OnProcessExit(
                 target_action=load_joint_state_broadcaster,
                 on_exit=[load_canadarm_joint_controller],
+            )
+        ),
+        RegisterEventHandler(
+            OnProcessExit(
+                target_action=load_canadarm_joint_controller,
+                on_exit=[canadarm_wrapper_spawn],
             )
         ),
     ])

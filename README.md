@@ -7,13 +7,15 @@ use it after modifying the path in the the <strong>src/space_robots_gz/run.sh</s
 
 1. shortcuts in docker terminal   
 ```
-alias rl='ros2 launch canadarm canadarm.launch.py'
-alias ctl='ros2 launch robot_manager run_canadarm_control.launch.py'
+rlcanadarm  = ros2 launch canadarm canadarm.launch.py
+rlfranka    = ros2 launch franka franka.launch.py
+rlfloating  = ros2 launch canadarm floating_canadarm_camera.launch.py
 ```
 2. Register shortcuts in local   
 ```
 echo "alias rldocker='cd $SPACE_WS/src/space_robots_gz && ./build.sh && ./run.sh'" >> ~/.bashrc
 echo "alias execdocker='cd $SPACE_WS/src/space_robots_gz && ./exec.sh'" >> ~/.bashrc
+echo "alias stopdocker='docker stop openrobotics_space_robots_demo'" >> ~/.bashrc
 ```
 
 # Installation
@@ -56,9 +58,13 @@ sudo docker run --rm --runtime=nvidia --gpus all ubuntu nvidia-smi
 ## To-do List
 
 - Modify a cost function
+- Calculate the docking interface(target) pose
 
 ## Changelog
 
+- **2025-04-04**  
+  - Separate the robot wrapper from the solver
+  - Improving solver performance
 - **2025-03-31**  
   - Apply a Kalman filter to a target pose
   - Mounting the camera on CANADARM's end effector and connecting the image to ROS2

@@ -6,7 +6,7 @@
 
 <robot name="panda" xmlns:xacro="http://www.ros.org/wiki/xacro">
   <xacro:include filename="$(find simulation)/models/franka/urdf/franka.gazebo.xacro" />
-  <xacro:franka_gazebo command_interface="position" />
+  <xacro:franka_gazebo command_interface="effort" />
 
   <link name='world'>
   </link>

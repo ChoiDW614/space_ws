@@ -2,16 +2,15 @@ controller_manager:
   ros__parameters:
     update_rate: 100
 
-    floating_canadarm_joint_controller:
-      type: position_controllers/JointGroupPositionController
-
+    canadarm_joint_controller:
+      type: effort_controllers/JointGroupEffortController
 
     canadarm_joint_state_broadcaster:
       type: joint_state_broadcaster/JointStateBroadcaster
 
 
 
-floating_canadarm_joint_controller:
+canadarm_joint_controller:
   ros__parameters:
     joints:
       - Base_Joint
