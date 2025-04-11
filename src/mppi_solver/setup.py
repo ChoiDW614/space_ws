@@ -26,6 +26,8 @@ setup(
             glob('mppi_solver/models/franka/meshes/collision/*')),
         (os.path.join('share', package_name, 'models', 'franka', 'meshes', 'visual'),
             glob('mppi_solver/models/franka/meshes/visual/*')),
+        (os.path.join('share', package_name, 'models', 'ets_vii'),
+            glob('mppi_solver/models/ets_vii/*.urdf')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,

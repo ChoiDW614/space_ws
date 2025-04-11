@@ -118,7 +118,7 @@ class MPPI():
             self.sample_gen.sigma[:4, :4] *= 0.5
             self.sample_gen.sigma[4:, 4:] *= 0.5
             self.pose_cost._tracking_pose_weight = 3.0
-            self.pose_cost._tracking_orientation_weight = 0.7            
+            self.pose_cost._tracking_orientation_weight = 0.7         
         else :
             self.sample_gen.sigma = torch.eye(self.n_action, device=self.device)
             self.sample_gen.sigma[:4, :4] *= 2.0
@@ -251,10 +251,12 @@ class MPPI():
         return
 
     def set_predict_target_pose(self, pose: np.ndarray):
-        self.predict_target_pose = torch.from_numpy(pose).to(self.device)
+        if isinstance(pose, torch.Tensor):
+            self.predict_target_pose = pose.to(self.device)
+        else:
+            self.predict_target_pose = torch.from_numpy(pose).to(self.device)
         return
     
-
     def moving_average_filter(self, xx: torch.Tensor, window_size: int) -> torch.Tensor:
         """
         Apply moving average filter for smoothing input sequence.

@@ -113,7 +113,7 @@ class MppiSolverNode(Node):
 
             # kalman filter update
             self.docking_interface.ekf_update()
-            self.controller.set_target_pose(self.docking_interface.pose)
+            self.controller.set_target_pose(self.docking_interface.docking_pose)
             self.controller.set_predict_target_pose(self.docking_interface.predict_pose)
 
             # prev state
